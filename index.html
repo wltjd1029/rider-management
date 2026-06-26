@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배달기사 관리 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --surface3: #2a2e42;
+    --border: #2e3248;
+    --border2: #3d4260;
+    --text: #e8eaf0;
+    --text2: #9098b8;
+    --text3: #5c6380;
+    --accent: #4f6ef7;
+    --accent2: #6b84f8;
+    --accent-bg: rgba(79,110,247,0.12);
+    --green: #2dd4a0;
+    --green-bg: rgba(45,212,160,0.1);
+    --red: #f76b6b;
+    --red-bg: rgba(247,107,107,0.1);
+    --amber: #f7b84f;
+    --amber-bg: rgba(247,184,79,0.1);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167,139,250,0.1);
+    --radius: 10px;
+    --font: 'Apple SD Gothic Neo', 'Malgun Gothic', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; flex-shrink: 0; position: fixed; height: 100vh; }
+  .main { margin-left: 220px; flex: 1; padding: 28px 32px; }
+
+  /* Sidebar */
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo .logo-tag { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 600; color: var(--text); }
+  .nav { padding: 12px 10px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; color: var(--text2); font-size: 13.5px; margin-bottom: 2px; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-bg); color: var(--accent2); font-weight: 500; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-section { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 12px 6px; }
+  .sidebar-bottom { padding: 16px 10px; border-top: 1px solid var(--border); }
+  .user-chip { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; }
+  .user-avatar { width: 28px; height: 28px; background: var(--accent-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--accent2); font-weight: 600; }
+  .user-name { font-size: 13px; color: var(--text2); }
+
+  /* Page header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; font-family: var(--font); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .stat-label { font-size: 12px; color: var(--text3); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .stat-val { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+  .stat-up { color: var(--green); }
+  .stat-down { color: var(--red); }
+
+  /* Table card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .card-title { font-size: 14px; font-weight: 600; }
+  .card-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Search / filter bar */
+  .filter-bar { display: flex; gap: 8px; align-items: center; }
+  .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 13px; font-family: var(--font); outline: none; width: 200px; }
+  .search-input::placeholder { color: var(--text3); }
+  .search-input:focus { border-color: var(--accent); }
+  select.filter-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; color: var(--text2); font-size: 13px; font-family: var(--font); outline: none; cursor: pointer; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 10px 16px; font-size: 12px; font-weight: 500; color: var(--text3); text-align: left; letter-spacing: 0.03em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 12px 16px; font-size: 13.5px; color: var(--text); vertical-align: middle; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .badge-blue { background: var(--accent-bg); color: var(--accent2); }
+
+  /* Avatar chip */
+  .driver-cell { display: flex; align-items: center; gap: 10px; }
+  .d-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--surface3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab { padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--font); }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  /* Sections */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Settlement upload area */
+  .upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; background: var(--surface); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+  .upload-icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .upload-sub { font-size: 13px; color: var(--text3); }
+  #file-input { display: none; }
+
+  /* Settlement result table */
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .result-tag { font-size: 11px; font-weight: 500; color: var(--green); background: var(--green-bg); padding: 3px 8px; border-radius: 20px; }
+
+  /* Amount display */
+  .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .amount-positive { color: var(--green); }
+  .amount-negative { color: var(--red); }
+
+  /* Fee section */
+  .fee-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .fee-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .fee-card-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .fee-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .fee-row:last-child { border-bottom: none; }
+  .fee-label { color: var(--text2); }
+  .fee-val { font-weight: 500; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-bg.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; width: 640px; max-width: 95vw; overflow: hidden; }
+  .modal-body { max-height: 70vh; overflow-y: auto; }
+  .form-section { font-size: 11px; font-weight: 600; color: var(--accent2); letter-spacing: 0.08em; text-transform: uppercase; padding: 14px 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 14px; margin-top: 4px; }
+  .form-section:first-child { padding-top: 0; margin-top: 0; }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .form-row { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--text3); margin-bottom: 5px; }
+  .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13.5px; font-family: var(--font); outline: none; }
+  .form-input:focus { border-color: var(--accent); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-text { font-size: 14px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px; font-size: 13.5px; color: var(--text); z-index: 999; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; display: flex; align-items: center; gap: 10px; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Promo card */
+  .promo-banner { background: linear-gradient(135deg, #1e2140 0%, #252a45 100%); border: 1px solid var(--accent); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
+  .promo-info h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .promo-info p { font-size: 13px; color: var(--text2); }
+  .promo-amount { font-size: 22px; font-weight: 800; color: var(--accent2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-tag">배달 관리 시스템</div>
+      <h1>🛵 RiderOps</h1>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">메인</div>
+      <button class="nav-item active" onclick="switchTab('drivers')">
+        <span class="icon">👥</span> 기사 관리
+      </button>
+      <button class="nav-item" onclick="switchTab('settlement')">
+        <span class="icon">💳</span> 정산 관리
+      </button>
+      <div class="nav-section">설정</div>
+      <button class="nav-item" onclick="switchTab('promo')">
+        <span class="icon">🎁</span> 프로모션
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar">관</div>
+        <div class="user-name">관리자</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- 기사 관리 -->
+    <div id="sec-drivers" class="section active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">기사 관리</div>
+          <div class="page-sub">전체 배달기사 가입/해지 및 상태 관리</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-ghost btn-sm">⬇ 내보내기</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-driver')">+ 기사 등록</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">🟢 활성 기사</div>
+          <div class="stat-val" id="stat-active">24</div>
+          <div class="stat-sub stat-up">▲ 3명 (이번달)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🔴 해지/중단</div>
+          <div class="stat-val" id="stat-inactive">6</div>
+          <div class="stat-sub stat-down">▼ 1명 (이번달)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🆕 이번달 신규</div>
+          <div class="stat-val">4</div>
+          <div class="stat-sub" style="color:var(--text3)">전월 대비 +1</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📋 전체</div>
+          <div class="stat-val" id="stat-total">30</div>
+          <div class="stat-sub" style="color:var(--text3)">누적 등록 기사</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">기사 목록</div>
+          <div class="card-actions">
+            <input class="search-input" placeholder="🔍  이름 / 전화번호 검색" oninput="filterDrivers(this.value)" />
+            <select class="filter-select" onchange="filterStatus(this.value)">
+              <option value="">전체 상태</option>
+              <option value="active">활성</option>
+              <option value="inactive">해지</option>
+              <option value="pause">일시중단</option>
+            </select>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>기사 ID</th>
+              <th>기사명</th>
+              <th>연락처</th>
+              <th>소속지점</th>
+              <th>가입일</th>
+              <th>정산주기</th>
+              <th>콜수수료</th>
+              <th>상태</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="driver-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 정산 관리 -->
+    <div id="sec-settlement" class="section">
+      <div class="page-header">
+        <div>
+          <div class="page-title">정산 관리</div>
+          <div class="page-sub">엑셀 파일 업로드 → 자동 파싱 및 정산금액 확인</div>
+        </div>
+        <div class="header-actions">
+          <select class="filter-select" id="settle-type-filter" onchange="filterSettlements()">
+            <option value="">전체</option>
+            <option value="daily">일정산</option>
+            <option value="weekly">주정산</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-title">정산 파일을 업로드하세요</div>
+        <div class="upload-sub">클릭하거나 파일을 드래그 · .xlsx / .csv 지원</div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+      </div>
+
+      <!-- Parsed result -->
+      <div id="parse-result" style="display:none">
+        <div class="result-card">
+          <div class="result-header">
+            <div>
+              <div class="card-title" id="parse-filename">파일명.xlsx</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px" id="parse-meta"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="result-tag">✓ 파싱 완료</span>
+              <button class="btn btn-primary btn-sm" onclick="saveSettlement()">저장</button>
+            </div>
+          </div>
+          <!-- 원본 탭 / 집계 탭 -->
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0">
+            <button class="tab active" id="tab-raw" onclick="switchParseTab('raw')" style="font-size:13px;padding:8px 16px">건별 원본</button>
+            <button class="tab" id="tab-summary" onclick="switchParseTab('summary')" style="font-size:13px;padding:8px 16px">라이더별 집계</button>
+          </div>
+
+          <!-- 건별 원본 -->
+          <div id="parse-raw-view">
+          <table>
+            <thead>
+              <tr>
+                <th>라이더명</th>
+                <th>라이더ID</th>
+                <th>운행일</th>
+                <th>배달번호</th>
+                <th>배달상태</th>
+                <th>서비스타입</th>
+                <th>가게이름</th>
+                <th>기본단가</th>
+                <th>기상할증</th>
+                <th>추가할증</th>
+                <th>피크할증 등</th>
+                <th>지역할증</th>
+                <th>대량할증</th>
+                <th>배달처리비</th>
+                <th>소계</th>
+              </tr>
+            </thead>
+            <tbody id="parse-tbody"></tbody>
+          </table>
+          </div>
+
+          <!-- 라이더별 집계 -->
+          <div id="parse-summary-view" style="display:none">
+          <table>
+            <thead>
+              <tr>
+                <th>라이더명</th>
+                <th>라이더ID</th>
+                <th>배달건수</th>
+                <th>기본단가 합계</th>
+                <th>할증 합계</th>
+                <th>배달처리비</th>
+                <th>총 지급액</th>
+              </tr>
+            </thead>
+            <tbody id="parse-summary-tbody"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">정산 내역</div>
+        </div>
+        <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>기사명</th>
+              <th>기사ID</th>
+              <th>정산기간</th>
+              <th>구분</th>
+              <th>전체건수</th>
+              <th>완료건수</th>
+              <th>배달처리비 (기준)</th>
+              <th>콜수수료</th>
+              <th>선지급</th>
+              <th>원천징수</th>
+              <th>고용보험</th>
+              <th>산재보험</th>
+              <th>기타차감</th>
+              <th>실지급액</th>
+              <th>파일</th>
+            </tr>
+          </thead>
+          <tbody id="settle-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프로모션 -->
+    <div id="sec-promo" class="section">
+      <div class="page-header">
+        <div>
+          <div class="page-title">프로모션</div>
+          <div class="page-sub">기사 대상 인센티브 및 이벤트 관리</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-promo')">+ 프로모션 추가</button>
+      </div>
+
+      <div id="promo-list"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">프로모션 지급 내역</div></div>
+        <table>
+          <thead>
+            <tr><th>프로모션명</th><th>기사명</th><th>지급금액</th><th>지급일</th><th>상태</th></tr>
+          </thead>
+          <tbody id="promo-pay-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 기사 등록 모달 -->
+<div class="modal-bg" id="modal-add-driver">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">기사 등록</div>
+      <button class="modal-close" onclick="closeModal('modal-add-driver')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div class="form-section">기본 정보</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기사 ID *</div>
+          <input class="form-input" id="inp-driverid" placeholder="예: RD-001">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기사명 *</div>
+          <input class="form-input" id="inp-name" placeholder="홍길동">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">연락처 *</div>
+          <input class="form-input" id="inp-phone" placeholder="010-0000-0000">
+        </div>
+        <div class="form-row">
+          <div class="form-label">생년월일</div>
+          <input class="form-input" id="inp-birth" type="date">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">가입날짜</div>
+          <input class="form-input" id="inp-joindate" type="date">
+        </div>
+        <div class="form-row">
+          <div class="form-label">소속지점</div>
+          <input class="form-input" id="inp-branch" placeholder="예: 강남지점">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">등록담당자</div>
+          <input class="form-input" id="inp-manager" placeholder="담당자 이름">
+        </div>
+        <div class="form-row">
+          <div class="form-label">가입경로</div>
+          <input class="form-input" id="inp-channel" placeholder="예: 지인 추천, 온라인 광고 등">
+        </div>
+      </div>
+
+      <div class="form-section">수수료 및 정산</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">콜수수료 (원/건) — 완료건수 × 단가</div>
+          <input class="form-input" id="inp-callfee" type="number" placeholder="0">
+        </div>
+        <div class="form-row">
+          <div class="form-label">선지급수수료 (원/건) — 완료건수 × 단가</div>
+          <input class="form-input" id="inp-prepay" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기타차감1 항목명</div>
+          <input class="form-input" id="inp-deduct1-label" placeholder="예: 보험료">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기타차감1 금액 (원)</div>
+          <input class="form-input" id="inp-deduct1" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기타차감2 항목명</div>
+          <input class="form-input" id="inp-deduct2-label" placeholder="예: 장비대여료">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기타차감2 금액 (원)</div>
+          <input class="form-input" id="inp-deduct2" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">원천징수 (%)</div>
+          <input class="form-input" id="inp-tax" type="number" step="0.01" placeholder="예: 3.3">
+        </div>
+        <div class="form-row">
+          <div class="form-label">고용보험 (%)</div>
+          <input class="form-input" id="inp-emp-ins" type="number" step="0.01" placeholder="예: 0.9">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">산재보험 (%)</div>
+          <input class="form-input" id="inp-acc-ins" type="number" step="0.01" placeholder="예: 1.0">
+        </div>
+        <div class="form-row">
+          <div class="form-label">정산주기</div>
+          <select class="form-input" id="inp-settle">
+            <option value="daily">일정산</option>
+            <option value="weekly">주정산</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">계좌 정보</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">예금주</div>
+          <input class="form-input" id="inp-accountname" placeholder="예금주명">
+        </div>
+        <div class="form-row">
+          <div class="form-label">은행</div>
+          <input class="form-input" id="inp-bank" placeholder="예: 국민은행, 카카오뱅크 등">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">계좌번호</div>
+        <input class="form-input" id="inp-account" placeholder="- 없이 숫자만 입력">
+      </div>
+
+      <div class="form-section">기타</div>
+      <div class="form-row">
+        <div class="form-label">메모</div>
+        <input class="form-input" id="inp-notes" placeholder="특이사항 등 자유 입력">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-add-driver')">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="addDriver()">등록하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 기사 수정 모달 -->
+<div class="modal-bg" id="modal-edit-driver">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">기사 정보 수정</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-driver')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <input type="hidden" id="edit-id">
+      <div class="form-section">기본 정보</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기사 ID</div>
+          <input class="form-input" id="edit-driverid" placeholder="예: RD-001">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기사명 *</div>
+          <input class="form-input" id="edit-name" placeholder="홍길동">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">연락처 *</div>
+          <input class="form-input" id="edit-phone" placeholder="010-0000-0000">
+        </div>
+        <div class="form-row">
+          <div class="form-label">생년월일</div>
+          <input class="form-input" id="edit-birth" type="date">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">가입날짜</div>
+          <input class="form-input" id="edit-joindate" type="date">
+        </div>
+        <div class="form-row">
+          <div class="form-label">소속지점</div>
+          <input class="form-input" id="edit-branch" placeholder="예: 강남지점">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">등록담당자</div>
+          <input class="form-input" id="edit-manager" placeholder="담당자 이름">
+        </div>
+        <div class="form-row">
+          <div class="form-label">가입경로</div>
+          <input class="form-input" id="edit-channel" placeholder="예: 지인 추천, 온라인 광고 등">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">상태</div>
+          <select class="form-input" id="edit-status">
+            <option value="active">활성</option>
+            <option value="pause">일시중단</option>
+            <option value="inactive">해지</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">수수료 및 정산</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">콜수수료 (원/건) — 완료건수 × 단가</div>
+          <input class="form-input" id="edit-callfee" type="number" placeholder="0">
+        </div>
+        <div class="form-row">
+          <div class="form-label">선지급수수료 (원/건) — 완료건수 × 단가</div>
+          <input class="form-input" id="edit-prepay" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기타차감1 항목명</div>
+          <input class="form-input" id="edit-deduct1-label" placeholder="예: 보험료">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기타차감1 금액 (원)</div>
+          <input class="form-input" id="edit-deduct1" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">기타차감2 항목명</div>
+          <input class="form-input" id="edit-deduct2-label" placeholder="예: 장비대여료">
+        </div>
+        <div class="form-row">
+          <div class="form-label">기타차감2 금액 (원)</div>
+          <input class="form-input" id="edit-deduct2" type="number" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">원천징수 (%)</div>
+          <input class="form-input" id="edit-tax" type="number" step="0.01" placeholder="예: 3.3">
+        </div>
+        <div class="form-row">
+          <div class="form-label">고용보험 (%)</div>
+          <input class="form-input" id="edit-emp-ins" type="number" step="0.01" placeholder="예: 0.9">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">산재보험 (%)</div>
+          <input class="form-input" id="edit-acc-ins" type="number" step="0.01" placeholder="예: 1.0">
+        </div>
+        <div class="form-row">
+          <div class="form-label">정산주기</div>
+          <select class="form-input" id="edit-settle">
+            <option value="daily">일정산</option>
+            <option value="weekly">주정산</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">계좌 정보</div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">예금주</div>
+          <input class="form-input" id="edit-accountname" placeholder="예금주명">
+        </div>
+        <div class="form-row">
+          <div class="form-label">은행</div>
+          <input class="form-input" id="edit-bank" placeholder="예: 국민은행, 카카오뱅크 등">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">계좌번호</div>
+        <input class="form-input" id="edit-account" placeholder="- 없이 숫자만 입력">
+      </div>
+
+      <div class="form-section">기타</div>
+      <div class="form-row">
+        <div class="form-label">메모</div>
+        <input class="form-input" id="edit-notes" placeholder="특이사항 등 자유 입력">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-edit-driver')">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEditDriver()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 프로모션 추가 모달 -->
+<div class="modal-bg" id="modal-add-promo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">프로모션 추가</div>
+      <button class="modal-close" onclick="closeModal('modal-add-promo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-label">프로모션명 *</div>
+        <input class="form-input" id="inp-promo-name" placeholder="예: 6월 우수 배달원 인센티브">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">지급 금액 (원)</div>
+          <input class="form-input" id="inp-promo-amount" type="number" placeholder="50000">
+        </div>
+        <div class="form-row">
+          <div class="form-label">조건</div>
+          <input class="form-input" id="inp-promo-cond" placeholder="예: 월 200건 이상">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">시작일</div>
+          <input class="form-input" id="inp-promo-start" type="date">
+        </div>
+        <div class="form-row">
+          <div class="form-label">종료일</div>
+          <input class="form-input" id="inp-promo-end" type="date">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-add-promo')">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="addPromo()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 더미 데이터 ──
+let drivers = [];
+let settlements = [];
+let promos = [];
+let promoPayments = [];
+
+// ── 렌더 ──
+function fmt(n) { return n.toLocaleString('ko-KR') + '원'; }
+
+function statusBadge(s) {
+  if (s==='active') return '<span class="badge badge-green">● 활성</span>';
+  if (s==='inactive') return '<span class="badge badge-red">● 해지</span>';
+  return '<span class="badge badge-amber">● 일시중단</span>';
+}
+
+function settleBadge(t) {
+  return t==='daily' ? '<span class="badge badge-blue">일정산</span>' : '<span class="badge badge-purple">주정산</span>';
+}
+
+function platBadge(p) {
+  const colors = { '배달의민족': 'badge-blue', '쿠팡이츠': 'badge-purple', '요기요': 'badge-amber', '직접배달': 'badge-green' };
+  return `<span class="badge ${colors[p]||'badge-blue'}">${p}</span>`;
+}
+
+function renderDrivers(list) {
+  const tb = document.getElementById('driver-tbody');
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">검색 결과가 없습니다</div></div></td></tr>'; return; }
+  tb.innerHTML = list.map(d => `
+    <tr>
+      <td style="color:var(--text3);font-size:12px;font-family:monospace">${d.driverid||'-'}</td>
+      <td><div class="driver-cell"><div class="d-avatar">${d.name[0]}</div><div><span>${d.name}</span>${d.branch?`<div style="font-size:11px;color:var(--text3)">${d.branch}</div>`:''}</div></div></td>
+      <td style="color:var(--text2)">${d.phone}</td>
+      <td style="color:var(--text2)">${d.branch||'-'}</td>
+      <td style="color:var(--text3)">${d.join}</td>
+      <td>${settleBadge(d.settle)}</td>
+      <td class="amount" style="font-size:13px">${d.callfee?d.callfee.toLocaleString()+'원':'-'}</td>
+      <td>${statusBadge(d.status)}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal(${d.id})">✏️ 수정</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleStatus(${d.id})" style="${d.status==='active'?'color:var(--red)':''}">${d.status==='active'?'해지':'복구'}</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderSettlements(list) {
+  const tb = document.getElementById('settle-tbody');
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="15"><div class="empty"><div class="empty-icon">📂</div><div class="empty-text">정산 내역이 없습니다</div></div></td></tr>'; return; }
+  tb.innerHTML = list.map(s => {
+    const otherDeduct = (s.deduct1||0) + (s.deduct2||0);
+    const d1txt = s.deduct1 ? `${s.deduct1label}: ${fmt(s.deduct1)}` : '';
+    const d2txt = s.deduct2 ? `${s.deduct2label}: ${fmt(s.deduct2)}` : '';
+    const deductTip = [d1txt,d2txt].filter(Boolean).join(' / ') || '-';
+    return `<tr>
+      <td><div class="driver-cell"><div class="d-avatar">${s.driver[0]}</div>${s.driver}</div></td>
+      <td style="color:var(--text3);font-size:12px;font-family:monospace">${s.driverId||'-'}</td>
+      <td style="color:var(--text3);font-size:12px;white-space:nowrap">${s.start}${s.type==='weekly'?' ~ '+s.end:''}</td>
+      <td>${s.type==='daily'?'<span class="badge badge-blue">일정산</span>':'<span class="badge badge-purple">주정산</span>'}</td>
+      <td style="text-align:center"><span class="badge badge-amber">${s.totalCount||0}건</span></td>
+      <td style="text-align:center"><span class="badge badge-green">${s.doneCount||0}건</span></td>
+      <td class="amount" style="font-weight:600">${fmt(s.proc)}</td>
+      <td class="amount amount-negative" title="${s.callfeeUnit||0}원/건 × ${s.doneCount||0}건">${s.callfeeTotal?fmt(s.callfeeTotal):'-'}</td>
+      <td class="amount amount-negative" title="${s.prepayUnit||0}원/건 × ${s.doneCount||0}건">${s.prepayTotal?fmt(s.prepayTotal):'-'}</td>
+      <td class="amount amount-negative" title="${s.taxRate||0}%">${s.taxAmt?fmt(s.taxAmt):'-'}</td>
+      <td class="amount amount-negative" title="${s.empRate||0}%">${s.empAmt?fmt(s.empAmt):'-'}</td>
+      <td class="amount amount-negative" title="${s.accRate||0}%">${s.accAmt?fmt(s.accAmt):'-'}</td>
+      <td class="amount amount-negative" title="${deductTip}">${otherDeduct?fmt(otherDeduct):'-'}</td>
+      <td class="amount amount-positive" style="font-size:15px;font-weight:700">+${fmt(s.net)}</td>
+      <td style="color:var(--text3);font-size:12px">📄 ${s.file}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPromos() {
+  document.getElementById('promo-list').innerHTML = promos.map(p => `
+    <div class="promo-banner" style="${p.status==='종료'?'opacity:0.5;border-color:var(--border2)':''}">
+      <div class="promo-info">
+        <h3>${p.name} ${p.status==='종료'?'<span class="badge badge-amber" style="font-size:11px;margin-left:6px">종료</span>':'<span class="badge badge-green" style="font-size:11px;margin-left:6px">진행중</span>'}</h3>
+        <p>조건: ${p.cond} · ${p.start} ~ ${p.end}</p>
+      </div>
+      <div class="promo-amount">${p.amount.toLocaleString()}원</div>
+    </div>`).join('');
+
+  document.getElementById('promo-pay-tbody').innerHTML = promoPayments.map(p => `
+    <tr>
+      <td>${p.promo}</td>
+      <td><div class="driver-cell"><div class="d-avatar">${p.driver[0]}</div>${p.driver}</div></td>
+      <td class="amount amount-positive">+${fmt(p.amount)}</td>
+      <td style="color:var(--text3)">${p.date}</td>
+      <td><span class="badge badge-green">${p.status}</span></td>
+    </tr>`).join('');
+}
+
+// ── 필터 ──
+let statusFilter = '';
+function filterDrivers(q) {
+  const list = drivers.filter(d =>
+    (d.name.includes(q) || d.phone.includes(q)) &&
+    (statusFilter==='' || d.status===statusFilter));
+  renderDrivers(list);
+}
+function filterStatus(v) { statusFilter=v; filterDrivers(document.querySelector('.search-input').value); }
+function filterSettlements() {
+  const t = document.getElementById('settle-type-filter').value;
+  renderSettlements(t ? settlements.filter(s=>s.type===t) : settlements);
+}
+
+// ── 기사 추가 ──
+function addDriver() {
+  const name = document.getElementById('inp-name').value.trim();
+  const phone = document.getElementById('inp-phone').value.trim();
+  if (!name || !phone) { showToast('⚠️ 이름과 연락처를 입력해주세요'); return; }
+  const d = {
+    id:           Date.now(),
+    driverid:     document.getElementById('inp-driverid').value.trim(),
+    name, phone,
+    birth:        document.getElementById('inp-birth').value,
+    join:         document.getElementById('inp-joindate').value || new Date().toISOString().slice(0,10),
+    branch:       document.getElementById('inp-branch').value.trim(),
+    manager:      document.getElementById('inp-manager').value.trim(),
+    channel:      document.getElementById('inp-channel').value.trim(),
+    callfee:      parseFloat(document.getElementById('inp-callfee').value) || 0,
+    prepay:       parseFloat(document.getElementById('inp-prepay').value) || 0,
+    deduct1label: document.getElementById('inp-deduct1-label').value.trim(),
+    deduct1:      parseInt(document.getElementById('inp-deduct1').value) || 0,
+    deduct2label: document.getElementById('inp-deduct2-label').value.trim(),
+    deduct2:      parseInt(document.getElementById('inp-deduct2').value) || 0,
+    tax:          parseFloat(document.getElementById('inp-tax').value) || 0,
+    empIns:       parseFloat(document.getElementById('inp-emp-ins').value) || 0,
+    accIns:       parseFloat(document.getElementById('inp-acc-ins').value) || 0,
+    settle:       document.getElementById('inp-settle').value,
+    accountname:  document.getElementById('inp-accountname').value.trim(),
+    bank:         document.getElementById('inp-bank').value.trim(),
+    account:      document.getElementById('inp-account').value.trim(),
+    notes:        document.getElementById('inp-notes').value.trim(),
+    status:       'active',
+  };
+  drivers.unshift(d);
+  renderDrivers(drivers);
+  updateStats();
+  closeModal('modal-add-driver');
+  showToast(`✅ ${name} 기사가 등록되었습니다`);
+  ['inp-driverid','inp-name','inp-phone','inp-birth','inp-branch','inp-manager','inp-channel',
+   'inp-callfee','inp-prepay','inp-deduct1-label','inp-deduct1','inp-deduct2-label','inp-deduct2',
+   'inp-tax','inp-emp-ins','inp-acc-ins',
+   'inp-accountname','inp-bank','inp-account','inp-notes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
+}
+
+function openEditModal(id) {
+  const d = drivers.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('edit-id').value            = d.id;
+  document.getElementById('edit-driverid').value      = d.driverid     || '';
+  document.getElementById('edit-name').value          = d.name         || '';
+  document.getElementById('edit-phone').value         = d.phone        || '';
+  document.getElementById('edit-birth').value         = d.birth        || '';
+  document.getElementById('edit-joindate').value      = d.join         || '';
+  document.getElementById('edit-branch').value        = d.branch       || '';
+  document.getElementById('edit-manager').value       = d.manager      || '';
+  document.getElementById('edit-channel').value       = d.channel      || '';
+  document.getElementById('edit-callfee').value       = d.callfee      || '';
+  document.getElementById('edit-prepay').value        = d.prepay       || '';
+  document.getElementById('edit-deduct1-label').value = d.deduct1label || '';
+  document.getElementById('edit-deduct1').value       = d.deduct1      || '';
+  document.getElementById('edit-deduct2-label').value = d.deduct2label || '';
+  document.getElementById('edit-deduct2').value       = d.deduct2      || '';
+  document.getElementById('edit-tax').value           = d.tax          || '';
+  document.getElementById('edit-emp-ins').value       = d.empIns       || '';
+  document.getElementById('edit-acc-ins').value       = d.accIns       || '';
+  document.getElementById('edit-accountname').value   = d.accountname  || '';
+  document.getElementById('edit-bank').value          = d.bank         || '';
+  document.getElementById('edit-account').value       = d.account      || '';
+  document.getElementById('edit-notes').value         = d.notes        || '';
+  const setSelect = (sid, val) => {
+    const sel = document.getElementById(sid);
+    for (let opt of sel.options) { if (opt.value===val || opt.text===val) { sel.value=opt.value; return; } }
+  };
+  setSelect('edit-settle', d.settle || 'daily');
+  setSelect('edit-status', d.status || 'active');
+  openModal('modal-edit-driver');
+}
+
+function saveEditDriver() {
+  const id   = parseInt(document.getElementById('edit-id').value);
+  const name = document.getElementById('edit-name').value.trim();
+  const phone= document.getElementById('edit-phone').value.trim();
+  if (!name || !phone) { showToast('⚠️ 이름과 연락처를 입력해주세요'); return; }
+  const d = drivers.find(x => x.id === id);
+  if (!d) return;
+  d.driverid     = document.getElementById('edit-driverid').value.trim();
+  d.name         = name;
+  d.phone        = phone;
+  d.birth        = document.getElementById('edit-birth').value;
+  d.join         = document.getElementById('edit-joindate').value;
+  d.branch       = document.getElementById('edit-branch').value.trim();
+  d.manager      = document.getElementById('edit-manager').value.trim();
+  d.channel      = document.getElementById('edit-channel').value.trim();
+  d.callfee      = parseFloat(document.getElementById('edit-callfee').value) || 0;
+  d.prepay       = parseFloat(document.getElementById('edit-prepay').value) || 0;
+  d.deduct1label = document.getElementById('edit-deduct1-label').value.trim();
+  d.deduct1      = parseInt(document.getElementById('edit-deduct1').value) || 0;
+  d.deduct2label = document.getElementById('edit-deduct2-label').value.trim();
+  d.deduct2      = parseInt(document.getElementById('edit-deduct2').value) || 0;
+  d.tax          = parseFloat(document.getElementById('edit-tax').value) || 0;
+  d.empIns       = parseFloat(document.getElementById('edit-emp-ins').value) || 0;
+  d.accIns       = parseFloat(document.getElementById('edit-acc-ins').value) || 0;
+  d.settle       = document.getElementById('edit-settle').value;
+  d.status       = document.getElementById('edit-status').value;
+  d.accountname  = document.getElementById('edit-accountname').value.trim();
+  d.bank         = document.getElementById('edit-bank').value.trim();
+  d.account      = document.getElementById('edit-account').value.trim();
+  d.notes        = document.getElementById('edit-notes').value.trim();
+  renderDrivers(drivers);
+  updateStats();
+  closeModal('modal-edit-driver');
+  showToast(`✅ ${name} 기사 정보가 수정되었습니다`);
+}
+
+function toggleStatus(id) {
+  const d = drivers.find(x=>x.id===id);
+  if (!d) return;
+  d.status = d.status==='active' ? 'inactive' : 'active';
+  renderDrivers(drivers);
+  updateStats();
+  showToast(d.status==='active' ? `✅ ${d.name} 기사가 복구되었습니다` : `🔴 ${d.name} 기사가 해지되었습니다`);
+}
+
+function updateStats() {
+  document.getElementById('stat-active').textContent = drivers.filter(d=>d.status==='active').length;
+  document.getElementById('stat-inactive').textContent = drivers.filter(d=>d.status==='inactive').length;
+  document.getElementById('stat-total').textContent = drivers.length;
+}
+
+// ── 엑셀 파싱 ──
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      showParsed(file.name, rows);
+    } catch(err) {
+      showToast('⚠️ 파일을 읽는 중 오류가 발생했습니다');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// 실제 헤더에서 컬럼키 찾기
+function findCol(keys, ...kws) {
+  return keys.find(k => kws.some(w => k.trim().replace(/\s/g,'').includes(w.replace(/\s/g,'')))) || '';
+}
+
+let parsedRows = [];
+let parsedFile = '';
+
+function showParsed(filename, rows) {
+  parsedFile = filename;
+  parsedRows = rows;
+
+  document.getElementById('parse-filename').textContent = filename;
+  document.getElementById('parse-result').style.display = 'block';
+
+  if (!rows.length) {
+    document.getElementById('parse-meta').textContent = '데이터가 없습니다';
+    document.getElementById('parse-tbody').innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:20px">데이터가 없습니다</td></tr>';
+    return;
+  }
+
+  const keys = Object.keys(rows[0]);
+  const C = {
+    riderName:  findCol(keys, '라이더명', '기사명', '이름'),
+    riderId:    findCol(keys, '라이더ID', '라이더id', 'RiderID', '라이더 ID'),
+    date:       findCol(keys, '운행일', '날짜', '정산일'),
+    deliveryNo: findCol(keys, '배달번호'),
+    status:     findCol(keys, '배달상태'),
+    service:    findCol(keys, '서비스타입', '서비스'),
+    store:      findCol(keys, '가게이름', '가게명', '상점'),
+    base:       findCol(keys, '기본단가'),
+    weather:    findCol(keys, '기상할증'),
+    extra:      findCol(keys, '추가할증'),
+    peak:       findCol(keys, '피크할증'),
+    region:     findCol(keys, '지역할증', '지역 할증'),
+    bulk:       findCol(keys, '대량할증', '대량 할증'),
+    processFee: findCol(keys, '배달처리비'),
+  };
+
+  document.getElementById('parse-meta').textContent =
+    `총 ${rows.length}건 · 라이더 ${new Set(rows.map(r=>r[C.riderName])).size}명`;
+
+  // 건별 원본
+  const tb = document.getElementById('parse-tbody');
+  tb.innerHTML = rows.map(r => {
+    const base    = parseNum(r[C.base]);
+    const weather = parseNum(r[C.weather]);
+    const extra   = parseNum(r[C.extra]);
+    const peak    = parseNum(r[C.peak]);
+    const region  = parseNum(r[C.region]);
+    const bulk    = parseNum(r[C.bulk]);
+    const proc    = parseNum(r[C.processFee]);
+    const subtotal = base + weather + extra + peak + region + bulk + proc;
+    const name = r[C.riderName] || '-';
+    const st = r[C.status] || '';
+    const stBadge = st.includes('완료') || proc > 0
+                  ? `<span class="badge badge-green">${st||'완료'}</span>`
+                  : st.includes('취소') ? `<span class="badge badge-red">${st}</span>`
+                  : `<span class="badge badge-amber">${st||'-'}</span>`;
+    return `<tr>
+      <td><div class="driver-cell"><div class="d-avatar">${name[0]||'?'}</div>${name}</div></td>
+      <td style="color:var(--text3);font-size:12px">${r[C.riderId]||'-'}</td>
+      <td style="color:var(--text3)">${r[C.date]||'-'}</td>
+      <td style="color:var(--text3);font-size:12px">${r[C.deliveryNo]||'-'}</td>
+      <td>${stBadge}</td>
+      <td><span class="badge badge-blue">${r[C.service]||'-'}</span></td>
+      <td style="color:var(--text2);font-size:12px">${r[C.store]||'-'}</td>
+      <td class="amount">${fmt(base)}</td>
+      <td class="amount">${weather?fmt(weather):'-'}</td>
+      <td class="amount">${extra?fmt(extra):'-'}</td>
+      <td class="amount">${peak?fmt(peak):'-'}</td>
+      <td class="amount">${region?fmt(region):'-'}</td>
+      <td class="amount">${bulk?fmt(bulk):'-'}</td>
+      <td class="amount amount-negative">${proc?fmt(proc):'-'}</td>
+      <td class="amount amount-positive" style="font-size:13px;font-weight:700">+${fmt(base + weather + extra + peak + region + bulk - proc)}</td>
+    </tr>`;
+  }).join('');
+
+  // 라이더별 집계
+  const summary = {};
+  rows.forEach(r => {
+    const name = r[C.riderName] || '알 수 없음';
+    const id   = r[C.riderId]   || '-';
+    if (!summary[name]) summary[name] = { id, count:0, base:0, surcharge:0, proc:0 };
+    summary[name].count++;
+    summary[name].base      += parseNum(r[C.base]);
+    summary[name].surcharge += parseNum(r[C.weather]) + parseNum(r[C.extra]) + parseNum(r[C.peak]) + parseNum(r[C.region]) + parseNum(r[C.bulk]);
+    summary[name].proc      += parseNum(r[C.processFee]);
+  });
+
+  const stb = document.getElementById('parse-summary-tbody');
+  stb.innerHTML = Object.entries(summary).map(([name, s]) => {
+    const total = s.base + s.surcharge - s.proc;
+    return `<tr>
+      <td><div class="driver-cell"><div class="d-avatar">${name[0]}</div>${name}</div></td>
+      <td style="color:var(--text3);font-size:12px">${s.id}</td>
+      <td style="text-align:center"><span class="badge badge-blue">${s.count}건</span></td>
+      <td class="amount">${fmt(s.base)}</td>
+      <td class="amount amount-positive">+${fmt(s.surcharge)}</td>
+      <td class="amount amount-negative">${fmt(s.proc)}</td>
+      <td class="amount amount-positive" style="font-size:15px;font-weight:700">+${fmt(s.base + s.surcharge - s.proc)}</td>
+    </tr>`;
+  }).join('');
+
+  switchParseTab('raw');
+}
+
+function switchParseTab(tab) {
+  document.getElementById('parse-raw-view').style.display     = tab==='raw'     ? '' : 'none';
+  document.getElementById('parse-summary-view').style.display = tab==='summary' ? '' : 'none';
+  document.getElementById('tab-raw').classList.toggle('active',     tab==='raw');
+  document.getElementById('tab-summary').classList.toggle('active', tab==='summary');
+}
+
+function parseNum(v) {
+  if (!v) return 0;
+  return parseInt(String(v).replace(/[^\d]/g,'')) || 0;
+}
+
+function saveSettlement() {
+  if (!parsedRows.length) return;
+  const keys = Object.keys(parsedRows[0]);
+  const C = {
+    riderName:  findCol(keys, '라이더명', '기사명', '이름'),
+    riderId:    findCol(keys, '라이더ID', '라이더id'),
+    date:       findCol(keys, '운행일', '날짜', '정산일'),
+    status:     findCol(keys, '배달상태'),
+    base:       findCol(keys, '기본단가'),
+    weather:    findCol(keys, '기상할증'),
+    extra:      findCol(keys, '추가할증'),
+    peak:       findCol(keys, '피크할증'),
+    region:     findCol(keys, '지역할증', '지역 할증'),
+    bulk:       findCol(keys, '대량할증', '대량 할증'),
+    processFee: findCol(keys, '배달처리비'),
+  };
+
+  const summary = {};
+  parsedRows.forEach(r => {
+    const name = r[C.riderName] || '알 수 없음';
+    if (!summary[name]) {
+      const dates = parsedRows.filter(x=>x[C.riderName]===name).map(x=>x[C.date]).filter(Boolean).sort();
+      summary[name] = { driver:name, start:dates[0]||'', end:dates[dates.length-1]||'',
+        totalCount:0, doneCount:0, proc:0, file:parsedFile };
+    }
+    const st = String(r[C.status]||'');
+    const procAmt = parseNum(r[C.processFee]);
+    summary[name].totalCount++;
+    if (st.includes('완료') || procAmt > 0) summary[name].doneCount++;
+    summary[name].proc += procAmt;
+  });
+
+  Object.values(summary).forEach((s, i) => {
+    const d = drivers.find(x => x.name === s.driver);
+    const callfeeUnit  = d ? (d.callfee  || 0) : 0;
+    const prepayUnit   = d ? (d.prepay   || 0) : 0;
+    const callfeeTotal = Math.round(callfeeUnit * s.doneCount);
+    const prepayTotal  = Math.round(prepayUnit  * s.doneCount);
+    const deduct1      = d ? (d.deduct1  || 0) : 0;
+    const deduct2      = d ? (d.deduct2  || 0) : 0;
+    const d1label      = d ? (d.deduct1label || '기타차감1') : '기타차감1';
+    const d2label      = d ? (d.deduct2label || '기타차감2') : '기타차감2';
+    const taxRate      = d ? (d.tax    || 0) : 0;
+    const empRate      = d ? (d.empIns || 0) : 0;
+    const accRate      = d ? (d.accIns || 0) : 0;
+    // 과세기준: 배달처리비 합계
+    const taxAmt = Math.round(s.proc * taxRate / 100);
+    const empAmt = Math.round(s.proc * empRate / 100);
+    const accAmt = Math.round(s.proc * accRate / 100);
+    const net = s.proc - callfeeTotal - prepayTotal - deduct1 - deduct2 - taxAmt - empAmt - accAmt;
+
+    settlements.unshift({
+      id: Date.now()+i,
+      driver: s.driver,
+      driverId: d ? (d.driverid||'') : '',
+      start: s.start, end: s.end,
+      type: s.start !== s.end ? 'weekly' : 'daily',
+      totalCount: s.totalCount,
+      doneCount: s.doneCount,
+      proc: s.proc,
+      callfeeUnit, callfeeTotal,
+      prepayUnit, prepayTotal,
+      deduct1, deduct1label: d1label,
+      deduct2, deduct2label: d2label,
+      taxRate, taxAmt,
+      empRate, empAmt,
+      accRate, accAmt,
+      net,
+      file: s.file,
+    });
+  });
+
+  renderSettlements(settlements);
+  document.getElementById('parse-result').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  parsedRows = [];
+  showToast(`✅ ${Object.keys(summary).length}명의 정산이 저장되었습니다`);
+}
+
+// ── 프로모션 추가 ──
+function addPromo() {
+  const name = document.getElementById('inp-promo-name').value.trim();
+  const amount = parseInt(document.getElementById('inp-promo-amount').value)||0;
+  if (!name) { showToast('⚠️ 프로모션명을 입력해주세요'); return; }
+  promos.unshift({ name, amount,
+    cond: document.getElementById('inp-promo-cond').value||'조건 없음',
+    start: document.getElementById('inp-promo-start').value,
+    end: document.getElementById('inp-promo-end').value,
+    status: '진행중' });
+  renderPromos();
+  closeModal('modal-add-promo');
+  showToast(`✅ 프로모션이 등록되었습니다`);
+}
+
+// ── 탭 전환 ──
+function switchTab(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── 모달 ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', function(e) { if(e.target===this) closeModal(this.id); }));
+
+// ── 토스트 ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ── 초기 렌더 ──
+renderDrivers(drivers);
+renderSettlements(settlements);
+renderPromos();
+updateStats();
+
+// 오늘 날짜 기본값
+document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
+</script>
+</body>
+</html>
