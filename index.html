@@ -575,6 +575,60 @@
       </div>
     </div>
 
+    <!-- 기사 상세 -->
+    <div id="sec-driver-detail" class="section">
+      <div class="page-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-ghost btn-sm" onclick="switchTabById('drivers')" style="font-size:16px;padding:6px 10px">←</button>
+          <div>
+            <div class="page-title" id="detail-title">기사 상세</div>
+            <div class="page-sub" id="detail-sub"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModalFromDetail()">✏️ 정보 수정</button>
+          <button class="btn btn-ghost btn-sm" id="detail-status-btn" onclick="toggleStatusFromDetail()" style="color:var(--red)">해지</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- 기본 정보 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📋 기본 정보</div></div>
+          <div style="padding:4px 0" id="detail-basic"></div>
+        </div>
+        <!-- 수수료 및 정산 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">💰 수수료 및 정산</div></div>
+          <div style="padding:4px 0" id="detail-fee"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- 계좌 정보 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏦 계좌 정보</div></div>
+          <div style="padding:4px 0" id="detail-account"></div>
+        </div>
+        <!-- 메모 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📝 메모</div></div>
+          <div style="padding:16px 20px;color:var(--text2);font-size:13.5px" id="detail-notes"></div>
+        </div>
+      </div>
+
+      <!-- 이력 -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📜 상태 변경 이력</div></div>
+        <table>
+          <thead>
+            <tr><th>일시</th><th>구분</th><th>메모</th></tr>
+          </thead>
+          <tbody id="detail-history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 프로모션 -->
     <div id="sec-promo" class="section">
       <div class="page-header">
@@ -856,7 +910,15 @@ function renderDrivers(list) {
   tb.innerHTML = list.map(d => `
     <tr>
       <td style="color:var(--text3);font-size:12px;font-family:monospace">${d.driverid||'-'}</td>
-      <td><div class="driver-cell"><div class="d-avatar">${d.name[0]}</div><div><span>${d.name}</span>${d.branch?`<div style="font-size:11px;color:var(--text3)">${d.branch}</div>`:''}</div></div></td>
+      <td>
+        <div class="driver-cell" style="cursor:pointer" onclick="openDriverDetail(${d.id})">
+          <div class="d-avatar">${d.name[0]}</div>
+          <div>
+            <span style="color:var(--accent2);text-decoration:underline;text-underline-offset:3px">${d.name}</span>
+            ${d.branch?`<div style="font-size:11px;color:var(--text3)">${d.branch}</div>`:''}
+          </div>
+        </div>
+      </td>
       <td style="color:var(--text2)">${d.phone}</td>
       <td style="color:var(--text2)">${d.branch||'-'}</td>
       <td style="color:var(--text3)">${d.join_date||'-'}</td>
@@ -866,7 +928,7 @@ function renderDrivers(list) {
       <td>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="openEditModal(${d.id})">✏️ 수정</button>
-          <button class="btn btn-ghost btn-sm" onclick="toggleStatus(${d.id})" style="${d.status==='active'?'color:var(--red)':''}">${d.status==='active'?'해지':'복구'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleStatus(${d.id})" style="${d.status==='active'?'color:var(--red)':''}">${d.status==='active'?'해지':'재가입'}</button>
           <button class="btn btn-ghost btn-sm" onclick="confirmDelete(${d.id},'${d.name}')" style="color:var(--red)">🗑</button>
         </div>
       </td>
@@ -1000,6 +1062,9 @@ async function addDriver() {
   });
   setLoading(false);
   if (error) { showToast('⚠️ 저장 실패: ' + error.message); return; }
+  // 등록 이력 기록
+  const { data: newDriver } = await sb.from('drivers').select('id').eq('phone', phone).single();
+  if (newDriver) await sb.from('driver_history').insert({ driver_id: newDriver.id, driver_name: name, action: '등록' });
   showToast(`✅ ${name} 기사가 등록되었습니다`);
   resetRegisterForm();
   switchTabById('drivers');
@@ -1069,20 +1134,116 @@ async function saveEditDriver() {
   await loadAll();
 }
 
-// ── 상태 토글 ──
+// ── 상태 토글 (목록에서) ──
 async function toggleStatus(id) {
   const d = drivers.find(x => x.id === id);
   if (!d) return;
   const newStatus = d.status === 'active' ? 'inactive' : 'active';
+  const action = newStatus === 'active' ? '재가입' : '해지';
   setLoading(true);
   const { error } = await sb.from('drivers').update({ status: newStatus }).eq('id', id);
+  if (!error) {
+    await sb.from('driver_history').insert({ driver_id: id, driver_name: d.name, action });
+  }
   setLoading(false);
   if (error) { showToast('⚠️ 상태 변경 실패'); return; }
-  showToast(newStatus==='active' ? `✅ ${d.name} 기사가 복구되었습니다` : `🔴 ${d.name} 기사가 해지되었습니다`);
+  showToast(newStatus==='active' ? `✅ ${d.name} 기사가 재가입되었습니다` : `🔴 ${d.name} 기사가 해지되었습니다`);
   await loadAll();
 }
 
-// ── 기사 삭제 ──
+// ── 상세 페이지에서 상태 토글 ──
+let currentDetailId = null;
+
+async function toggleStatusFromDetail() {
+  const d = drivers.find(x => x.id === currentDetailId);
+  if (!d) return;
+  await toggleStatus(d.id);
+  openDriverDetail(d.id);
+}
+
+// ── 기사 상세 ──
+function detailRow(label, value) {
+  return `<div class="fee-row" style="padding:10px 20px">
+    <span class="fee-label" style="font-size:12px;color:var(--text3)">${label}</span>
+    <span style="font-size:13.5px;color:var(--text);font-weight:500">${value||'-'}</span>
+  </div>`;
+}
+
+async function openDriverDetail(id) {
+  currentDetailId = id;
+  await loadAll();
+  const d = drivers.find(x => x.id === id);
+  if (!d) return;
+
+  // 헤더
+  document.getElementById('detail-title').textContent = d.name;
+  document.getElementById('detail-sub').innerHTML = `${d.driverid||''} &nbsp;·&nbsp; ${statusBadge(d.status)}`;
+
+  // 상태 버튼
+  const btn = document.getElementById('detail-status-btn');
+  if (d.status === 'active') {
+    btn.textContent = '해지'; btn.style.color = 'var(--red)';
+  } else {
+    btn.textContent = '재가입'; btn.style.color = 'var(--green)';
+  }
+
+  // 기본 정보
+  document.getElementById('detail-basic').innerHTML =
+    detailRow('기사명', d.name) +
+    detailRow('연락처', d.phone) +
+    detailRow('생년월일', d.birth) +
+    detailRow('가입날짜', d.join_date) +
+    detailRow('소속지점', d.branch) +
+    detailRow('등록담당자', d.manager) +
+    detailRow('가입경로', d.channel) +
+    detailRow('정산주기', d.settle_type==='daily'?'일정산':'주정산');
+
+  // 수수료 및 정산
+  document.getElementById('detail-fee').innerHTML =
+    detailRow('콜수수료', d.callfee ? Number(d.callfee).toLocaleString()+'원/건' : '-') +
+    detailRow('선지급수수료', d.prepay ? Number(d.prepay).toLocaleString()+'원/건' : '-') +
+    detailRow(d.deduct1_label||'기타차감1', d.deduct1 ? Number(d.deduct1).toLocaleString()+'원' : '-') +
+    detailRow(d.deduct2_label||'기타차감2', d.deduct2 ? Number(d.deduct2).toLocaleString()+'원' : '-') +
+    detailRow('원천징수', d.tax_rate ? d.tax_rate+'%' : '-') +
+    detailRow('고용보험', d.emp_ins_rate ? d.emp_ins_rate+'%' : '-') +
+    detailRow('산재보험', d.acc_ins_rate ? d.acc_ins_rate+'%' : '-');
+
+  // 계좌
+  document.getElementById('detail-account').innerHTML =
+    detailRow('예금주', d.account_name) +
+    detailRow('은행', d.bank) +
+    detailRow('계좌번호', d.account_number);
+
+  // 메모
+  document.getElementById('detail-notes').textContent = d.notes || '메모 없음';
+
+  // 이력
+  const { data: history } = await sb.from('driver_history')
+    .select('*').eq('driver_id', id).order('created_at', { ascending: false });
+  const htb = document.getElementById('detail-history-tbody');
+  if (!history || !history.length) {
+    htb.innerHTML = '<tr><td colspan="3"><div class="empty" style="padding:24px"><div class="empty-icon">📜</div><div class="empty-text">이력이 없습니다</div></div></td></tr>';
+  } else {
+    htb.innerHTML = history.map(h => {
+      const badge = h.action==='등록' ? 'badge-green'
+                  : h.action==='해지' ? 'badge-red'
+                  : h.action==='재가입' ? 'badge-blue' : 'badge-amber';
+      const dt = new Date(h.created_at);
+      const dtStr = `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      return `<tr>
+        <td style="color:var(--text3);font-size:13px">${dtStr}</td>
+        <td><span class="badge ${badge}">${h.action}</span></td>
+        <td style="color:var(--text2);font-size:13px">${h.memo||'-'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  switchTabById('driver-detail');
+}
+
+function openEditModalFromDetail() {
+  openEditModal(currentDetailId);
+}
 function confirmDelete(id, name) {
   document.getElementById('delete-driver-id').value = id;
   document.getElementById('delete-driver-name').textContent = name;
