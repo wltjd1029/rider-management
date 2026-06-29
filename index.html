@@ -721,6 +721,28 @@
   </div>
 </div>
 
+<!-- 기사 삭제 확인 모달 -->
+<div class="modal-bg" id="modal-delete-driver">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)">⚠️ 기사 삭제</div>
+      <button class="modal-close" onclick="closeModal('modal-delete-driver')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <p style="color:var(--text2);line-height:1.8">
+        <strong id="delete-driver-name" style="color:var(--text)"></strong> 기사를 삭제하면<br>
+        관련 데이터가 <span style="color:var(--red);font-weight:600">영구적으로 삭제</span>되며 복구할 수 없습니다.<br>
+        정말 삭제하시겠습니까?
+      </p>
+      <input type="hidden" id="delete-driver-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-delete-driver')">취소</button>
+      <button class="btn btn-sm" onclick="deleteDriver()" style="background:var(--red);color:#fff">삭제</button>
+    </div>
+  </div>
+</div>
+
 <!-- 프로모션 추가 모달 -->
 <div class="modal-bg" id="modal-add-promo">
   <div class="modal">
@@ -820,6 +842,7 @@ function renderDrivers(list) {
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="openEditModal(${d.id})">✏️ 수정</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleStatus(${d.id})" style="${d.status==='active'?'color:var(--red)':''}">${d.status==='active'?'해지':'복구'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="confirmDelete(${d.id},'${d.name}')" style="color:var(--red)">🗑</button>
         </div>
       </td>
     </tr>`).join('');
@@ -1035,6 +1058,26 @@ async function toggleStatus(id) {
   setLoading(false);
   if (error) { showToast('⚠️ 상태 변경 실패'); return; }
   showToast(newStatus==='active' ? `✅ ${d.name} 기사가 복구되었습니다` : `🔴 ${d.name} 기사가 해지되었습니다`);
+  await loadAll();
+}
+
+// ── 기사 삭제 ──
+function confirmDelete(id, name) {
+  document.getElementById('delete-driver-id').value = id;
+  document.getElementById('delete-driver-name').textContent = name;
+  openModal('modal-delete-driver');
+}
+
+async function deleteDriver() {
+  const id = parseInt(document.getElementById('delete-driver-id').value);
+  const d = drivers.find(x => x.id === id);
+  if (!d) return;
+  setLoading(true);
+  const { error } = await sb.from('drivers').delete().eq('id', id);
+  setLoading(false);
+  if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
+  closeModal('modal-delete-driver');
+  showToast(`🗑 ${d.name} 기사가 삭제되었습니다`);
   await loadAll();
 }
 
