@@ -200,6 +200,9 @@
     </div>
     <nav class="nav">
       <div class="nav-section">메인</div>
+      <button class="nav-item" onclick="switchTab('register')">
+        <span class="icon">➕</span> 기사 등록
+      </button>
       <button class="nav-item active" onclick="switchTab('drivers')">
         <span class="icon">👥</span> 기사 관리
       </button>
@@ -222,6 +225,162 @@
   <!-- Main -->
   <main class="main">
 
+    <!-- 기사 등록 -->
+    <div id="sec-register" class="section">
+      <div class="page-header">
+        <div>
+          <div class="page-title">기사 등록</div>
+          <div class="page-sub">신규 배달기사 정보를 입력하고 등록합니다</div>
+        </div>
+      </div>
+
+      <div style="max-width:760px">
+        <!-- 기본 정보 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">📋 기본 정보</div></div>
+          <div style="padding:20px 24px">
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">기사 ID</div>
+                <input class="form-input" id="inp-driverid" placeholder="예: RD-001">
+              </div>
+              <div class="form-row">
+                <div class="form-label">기사명 *</div>
+                <input class="form-input" id="inp-name" placeholder="홍길동">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">연락처 *</div>
+                <input class="form-input" id="inp-phone" placeholder="010-0000-0000">
+              </div>
+              <div class="form-row">
+                <div class="form-label">생년월일</div>
+                <input class="form-input" id="inp-birth" type="date">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">가입날짜</div>
+                <input class="form-input" id="inp-joindate" type="date">
+              </div>
+              <div class="form-row">
+                <div class="form-label">소속지점</div>
+                <input class="form-input" id="inp-branch" placeholder="예: 강남지점">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">등록담당자</div>
+                <input class="form-input" id="inp-manager" placeholder="담당자 이름">
+              </div>
+              <div class="form-row">
+                <div class="form-label">가입경로</div>
+                <input class="form-input" id="inp-channel" placeholder="예: 지인 추천, 온라인 광고 등">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 수수료 및 정산 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">💰 수수료 및 정산</div></div>
+          <div style="padding:20px 24px">
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">콜수수료 (원/건) — 완료건수 × 단가</div>
+                <input class="form-input" id="inp-callfee" type="number" placeholder="0">
+              </div>
+              <div class="form-row">
+                <div class="form-label">선지급수수료 (원/건) — 완료건수 × 단가</div>
+                <input class="form-input" id="inp-prepay" type="number" placeholder="0">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">기타차감1 항목명</div>
+                <input class="form-input" id="inp-deduct1-label" placeholder="예: 보험료">
+              </div>
+              <div class="form-row">
+                <div class="form-label">기타차감1 금액 (원)</div>
+                <input class="form-input" id="inp-deduct1" type="number" placeholder="0">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">기타차감2 항목명</div>
+                <input class="form-input" id="inp-deduct2-label" placeholder="예: 장비대여료">
+              </div>
+              <div class="form-row">
+                <div class="form-label">기타차감2 금액 (원)</div>
+                <input class="form-input" id="inp-deduct2" type="number" placeholder="0">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">원천징수 (%)</div>
+                <input class="form-input" id="inp-tax" type="number" step="0.01" placeholder="예: 3.3">
+              </div>
+              <div class="form-row">
+                <div class="form-label">고용보험 (%)</div>
+                <input class="form-input" id="inp-emp-ins" type="number" step="0.01" placeholder="예: 0.9">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">산재보험 (%)</div>
+                <input class="form-input" id="inp-acc-ins" type="number" step="0.01" placeholder="예: 1.0">
+              </div>
+              <div class="form-row">
+                <div class="form-label">정산주기</div>
+                <select class="form-input" id="inp-settle">
+                  <option value="daily">일정산</option>
+                  <option value="weekly">주정산</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 계좌 정보 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">🏦 계좌 정보</div></div>
+          <div style="padding:20px 24px">
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">예금주</div>
+                <input class="form-input" id="inp-accountname" placeholder="예금주명">
+              </div>
+              <div class="form-row">
+                <div class="form-label">은행</div>
+                <input class="form-input" id="inp-bank" placeholder="예: 국민은행, 카카오뱅크 등">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-label">계좌번호</div>
+              <input class="form-input" id="inp-account" placeholder="- 없이 숫자만 입력">
+            </div>
+          </div>
+        </div>
+
+        <!-- 메모 -->
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header"><div class="card-title">📝 메모</div></div>
+          <div style="padding:20px 24px">
+            <div class="form-row">
+              <input class="form-input" id="inp-notes" placeholder="특이사항 등 자유 입력">
+            </div>
+          </div>
+        </div>
+
+        <!-- 버튼 -->
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding-bottom:40px">
+          <button class="btn btn-ghost" onclick="resetRegisterForm()">초기화</button>
+          <button class="btn btn-primary" style="padding:10px 32px;font-size:15px" onclick="addDriver()">✅ 등록하기</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 기사 관리 -->
     <div id="sec-drivers" class="section active">
       <div class="page-header">
@@ -231,7 +390,7 @@
         </div>
         <div class="header-actions">
           <button class="btn btn-ghost btn-sm">⬇ 내보내기</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-driver')">+ 기사 등록</button>
+          <button class="btn btn-primary btn-sm" onclick="switchTabById('register')">+ 기사 등록</button>
         </div>
       </div>
 
@@ -440,140 +599,6 @@
     </div>
 
   </main>
-</div>
-
-<!-- 기사 등록 모달 -->
-<div class="modal-bg" id="modal-add-driver">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">기사 등록</div>
-      <button class="modal-close" onclick="closeModal('modal-add-driver')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:20px 24px">
-      <div class="form-section">기본 정보</div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">기사 ID *</div>
-          <input class="form-input" id="inp-driverid" placeholder="예: RD-001">
-        </div>
-        <div class="form-row">
-          <div class="form-label">기사명 *</div>
-          <input class="form-input" id="inp-name" placeholder="홍길동">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">연락처 *</div>
-          <input class="form-input" id="inp-phone" placeholder="010-0000-0000">
-        </div>
-        <div class="form-row">
-          <div class="form-label">생년월일</div>
-          <input class="form-input" id="inp-birth" type="date">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">가입날짜</div>
-          <input class="form-input" id="inp-joindate" type="date">
-        </div>
-        <div class="form-row">
-          <div class="form-label">소속지점</div>
-          <input class="form-input" id="inp-branch" placeholder="예: 강남지점">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">등록담당자</div>
-          <input class="form-input" id="inp-manager" placeholder="담당자 이름">
-        </div>
-        <div class="form-row">
-          <div class="form-label">가입경로</div>
-          <input class="form-input" id="inp-channel" placeholder="예: 지인 추천, 온라인 광고 등">
-        </div>
-      </div>
-
-      <div class="form-section">수수료 및 정산</div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">콜수수료 (원/건) — 완료건수 × 단가</div>
-          <input class="form-input" id="inp-callfee" type="number" placeholder="0">
-        </div>
-        <div class="form-row">
-          <div class="form-label">선지급수수료 (원/건) — 완료건수 × 단가</div>
-          <input class="form-input" id="inp-prepay" type="number" placeholder="0">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">기타차감1 항목명</div>
-          <input class="form-input" id="inp-deduct1-label" placeholder="예: 보험료">
-        </div>
-        <div class="form-row">
-          <div class="form-label">기타차감1 금액 (원)</div>
-          <input class="form-input" id="inp-deduct1" type="number" placeholder="0">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">기타차감2 항목명</div>
-          <input class="form-input" id="inp-deduct2-label" placeholder="예: 장비대여료">
-        </div>
-        <div class="form-row">
-          <div class="form-label">기타차감2 금액 (원)</div>
-          <input class="form-input" id="inp-deduct2" type="number" placeholder="0">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">원천징수 (%)</div>
-          <input class="form-input" id="inp-tax" type="number" step="0.01" placeholder="예: 3.3">
-        </div>
-        <div class="form-row">
-          <div class="form-label">고용보험 (%)</div>
-          <input class="form-input" id="inp-emp-ins" type="number" step="0.01" placeholder="예: 0.9">
-        </div>
-      </div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">산재보험 (%)</div>
-          <input class="form-input" id="inp-acc-ins" type="number" step="0.01" placeholder="예: 1.0">
-        </div>
-        <div class="form-row">
-          <div class="form-label">정산주기</div>
-          <select class="form-input" id="inp-settle">
-            <option value="daily">일정산</option>
-            <option value="weekly">주정산</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-section">계좌 정보</div>
-      <div class="form-row-2">
-        <div class="form-row">
-          <div class="form-label">예금주</div>
-          <input class="form-input" id="inp-accountname" placeholder="예금주명">
-        </div>
-        <div class="form-row">
-          <div class="form-label">은행</div>
-          <input class="form-input" id="inp-bank" placeholder="예: 국민은행, 카카오뱅크 등">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-label">계좌번호</div>
-        <input class="form-input" id="inp-account" placeholder="- 없이 숫자만 입력">
-      </div>
-
-      <div class="form-section">기타</div>
-      <div class="form-row">
-        <div class="form-label">메모</div>
-        <input class="form-input" id="inp-notes" placeholder="특이사항 등 자유 입력">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-add-driver')">취소</button>
-      <button class="btn btn-primary btn-sm" onclick="addDriver()">등록하기</button>
-    </div>
-  </div>
 </div>
 
 <!-- 기사 수정 모달 -->
@@ -975,13 +1000,9 @@ async function addDriver() {
   });
   setLoading(false);
   if (error) { showToast('⚠️ 저장 실패: ' + error.message); return; }
-  closeModal('modal-add-driver');
   showToast(`✅ ${name} 기사가 등록되었습니다`);
-  ['inp-driverid','inp-name','inp-phone','inp-birth','inp-branch','inp-manager','inp-channel',
-   'inp-callfee','inp-prepay','inp-deduct1-label','inp-deduct1','inp-deduct2-label','inp-deduct2',
-   'inp-tax','inp-emp-ins','inp-acc-ins','inp-accountname','inp-bank','inp-account','inp-notes'
-  ].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
+  resetRegisterForm();
+  switchTabById('drivers');
   await loadAll();
 }
 
@@ -1302,6 +1323,23 @@ function switchTab(id) {
   event.currentTarget.classList.add('active');
 }
 
+function switchTabById(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => { if (n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active'); });
+}
+
+function resetRegisterForm() {
+  ['inp-driverid','inp-name','inp-phone','inp-birth','inp-branch','inp-manager','inp-channel',
+   'inp-callfee','inp-prepay','inp-deduct1-label','inp-deduct1','inp-deduct2-label','inp-deduct2',
+   'inp-tax','inp-emp-ins','inp-acc-ins','inp-accountname','inp-bank','inp-account','inp-notes'
+  ].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('inp-settle').value = 'daily';
+}
+
 // ── 모달 ──
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1319,6 +1357,7 @@ function showToast(msg) {
 
 // ── 초기 로드 ──
 document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
+switchTabById('drivers');
 loadAll();
 </script>
 </body>
