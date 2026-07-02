@@ -1255,6 +1255,8 @@ async function deleteDriver() {
   const d = drivers.find(x => x.id === id);
   if (!d) return;
   setLoading(true);
+  // 이력 먼저 삭제 후 기사 삭제
+  await sb.from('driver_history').delete().eq('driver_id', id);
   const { error } = await sb.from('drivers').delete().eq('id', id);
   setLoading(false);
   if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
