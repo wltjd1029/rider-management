@@ -282,8 +282,10 @@
           <div style="padding:20px 24px">
             <div class="form-row-2">
               <div class="form-row">
-                <div class="form-label">기사 ID</div>
-                <input class="form-input" id="inp-driverid" placeholder="예: RD-001">
+                <div class="form-label">기사 ID *</div>
+                <input class="form-input" id="inp-driverid" placeholder="예: RD-001"
+                  oninput="checkDriverId(this.value)">
+                <div id="driverid-msg" style="font-size:12px;margin-top:5px;display:none"></div>
               </div>
               <div class="form-row">
                 <div class="form-label">기사명 *</div>
@@ -1410,11 +1412,16 @@ async function deleteAllSettlements() {
 
 // ── 기사 추가 ──
 async function addDriver() {
+  const driverid = document.getElementById('inp-driverid').value.trim();
   const name     = document.getElementById('inp-name').value.trim();
   const phone    = document.getElementById('inp-phone').value.trim();
   const resident = document.getElementById('inp-resident').value.trim();
+  if (!driverid) { showToast('⚠️ 기사 ID를 입력해주세요'); document.getElementById('inp-driverid').focus(); return; }
   if (!name)     { showToast('⚠️ 기사명을 입력해주세요'); return; }
   if (!phone)    { showToast('⚠️ 연락처1을 입력해주세요'); return; }
+  // 중복 ID 체크
+  const isDup = drivers.some(d => d.driverid === driverid);
+  if (isDup) { showToast('⚠️ 이미 등록된 기사 ID입니다'); document.getElementById('inp-driverid').focus(); return; }
   setLoading(true);
   const { error } = await sb.from('drivers').insert({
     driverid:        document.getElementById('inp-driverid').value.trim(),
@@ -1956,6 +1963,11 @@ function resetRegisterForm() {
   document.getElementById('inp-apply-tax').checked = false;
   document.getElementById('inp-apply-emp').checked = false;
   document.getElementById('inp-apply-acc').checked = false;
+  // 기사 ID 중복 메시지 초기화
+  const msgEl = document.getElementById('driverid-msg');
+  const idEl  = document.getElementById('inp-driverid');
+  if (msgEl) msgEl.style.display = 'none';
+  if (idEl)  idEl.style.borderColor = '';
   // 등록담당자는 로그인 계정 이름 유지
   const managerEl = document.getElementById('inp-manager');
   if (managerEl && currentUser) managerEl.value = currentUser.name || currentUser.username;
@@ -2109,6 +2121,29 @@ async function deleteAdminUser(id, username) {
   if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
   showToast(`🗑 ${username} 관리자가 삭제되었습니다`);
   await loadAdminUsers();
+}
+
+// ── 기사 ID 실시간 중복 체크 ──
+function checkDriverId(val) {
+  const msgEl = document.getElementById('driverid-msg');
+  const inputEl = document.getElementById('inp-driverid');
+  if (!val.trim()) {
+    msgEl.style.display = 'none';
+    inputEl.style.borderColor = '';
+    return;
+  }
+  const isDup = drivers.some(d => d.driverid === val.trim());
+  if (isDup) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = '⚠️ 이미 등록된 기사 ID입니다';
+    inputEl.style.borderColor = 'var(--red)';
+  } else {
+    msgEl.style.display = 'block';
+    msgEl.style.color = 'var(--green)';
+    msgEl.textContent = '✓ 사용 가능한 ID입니다';
+    inputEl.style.borderColor = 'var(--green)';
+  }
 }
 
 // ── 탭 전환 시 관리자 목록 로드 ──
