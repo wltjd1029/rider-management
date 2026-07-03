@@ -191,11 +191,38 @@
   thead th:hover .sort-icon { color:var(--text2); }
   thead th.sort-active { color:var(--accent2); }
   thead th.sort-active .sort-icon { color:var(--accent2); }
+  /* 로그인 화면 */
+  .login-screen { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:9000; }
+  .login-box { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:40px; width:380px; }
+  .login-logo { text-align:center; margin-bottom:32px; }
+  .login-logo h1 { font-size:24px; font-weight:700; margin-bottom:6px; }
+  .login-logo p { font-size:13px; color:var(--text3); }
+  .login-error { background:var(--red-bg); color:var(--red); border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:14px; display:none; }
 </style>
 </head>
 <body>
 
-<div class="layout">
+<!-- 로그인 화면 -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>🛵 RiderOps</h1>
+      <p>배달기사 관리 시스템</p>
+    </div>
+    <div class="login-error" id="login-error">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="form-row" style="margin-bottom:14px">
+      <div class="form-label">아이디</div>
+      <input class="form-input" id="login-username" placeholder="아이디 입력" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="form-row" style="margin-bottom:24px">
+      <div class="form-label">비밀번호</div>
+      <input class="form-input" id="login-password" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:11px;font-size:15px" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<div class="layout" style="display:none">
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
@@ -220,12 +247,19 @@
       <button class="nav-item" onclick="switchTab('config')">
         <span class="icon">⚙️</span> 설정
       </button>
+      <button class="nav-item" id="nav-admin-mgmt" onclick="switchTab('admin')" style="display:none">
+        <span class="icon">🔐</span> 관리자 등록
+      </button>
     </nav>
     <div class="sidebar-bottom">
       <div class="user-chip">
-        <div class="user-avatar">관</div>
-        <div class="user-name">관리자</div>
+        <div class="user-avatar" id="sidebar-avatar">관</div>
+        <div>
+          <div class="user-name" id="sidebar-username">관리자</div>
+          <div style="font-size:11px;color:var(--text3)" id="sidebar-role"></div>
+        </div>
       </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()" style="width:100%;margin-top:8px;color:var(--text3)">🚪 로그아웃</button>
     </div>
   </aside>
 
@@ -683,6 +717,59 @@
       </div>
     </div>
 
+    <!-- 관리자 등록 (마스터 전용) -->
+    <div id="sec-admin" class="section">
+      <div class="page-header">
+        <div>
+          <div class="page-title">관리자 등록</div>
+          <div class="page-sub">관리자 계정을 생성하고 관리합니다 (마스터 전용)</div>
+        </div>
+      </div>
+
+      <div style="max-width:560px">
+        <!-- 관리자 추가 카드 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">➕ 새 관리자 추가</div></div>
+          <div style="padding:20px 24px">
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">이름</div>
+                <input class="form-input" id="new-admin-name" placeholder="홍길동">
+              </div>
+              <div class="form-row">
+                <div class="form-label">아이디 *</div>
+                <input class="form-input" id="new-admin-username" placeholder="영문/숫자">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">비밀번호 *</div>
+                <input class="form-input" id="new-admin-password" type="password" placeholder="비밀번호">
+              </div>
+              <div class="form-row">
+                <div class="form-label">비밀번호 확인 *</div>
+                <input class="form-input" id="new-admin-password2" type="password" placeholder="비밀번호 재입력">
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-primary btn-sm" onclick="addAdminUser()">등록</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 관리자 목록 -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">👥 관리자 목록</div></div>
+          <table>
+            <thead>
+              <tr><th>이름</th><th>아이디</th><th>역할</th><th>등록일</th><th></th></tr>
+            </thead>
+            <tbody id="admin-list-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- 설정 -->
     <div id="sec-config" class="section">
       <div class="page-header">
@@ -991,6 +1078,7 @@ let settlements = [];
 let promos = [];
 let promoPayments = [];
 let appSettings = { tax_rate: 3.3, emp_ins_rate: 0.9, acc_ins_rate: 1.0 };
+let currentUser = null; // { username, name, role }
 
 // ── 로딩 UI ──
 function setLoading(on) {
@@ -1841,6 +1929,11 @@ function switchTab(id) {
 }
 
 function switchTabById(id) {
+  // 관리자 등록 페이지 접근 권한 체크
+  if (id === 'admin' && currentUser?.role !== 'master') {
+    showToast('⚠️ 마스터 계정만 접근 가능합니다');
+    return;
+  }
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const sec = document.getElementById('sec-' + id);
@@ -1848,6 +1941,8 @@ function switchTabById(id) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active');
   });
+  // 관리자 탭 진입 시 목록 로드
+  if (id === 'admin') loadAdminUsers();
 }
 
 function resetRegisterForm() {
@@ -1891,7 +1986,125 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', function(e) { if(e.target===this) closeModal(this.id); }));
 
-// ── 토스트 ──
+// ── SHA-256 해시 (SubtleCrypto) ──
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── 로그인 ──
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.style.display = 'block'; errEl.textContent = '아이디와 비밀번호를 입력해주세요.'; return; }
+
+  const hash = await sha256(password);
+  const { data, error } = await sb.from('admin_users')
+    .select('*').eq('username', username).eq('password_hash', hash).single();
+
+  if (error || !data) {
+    errEl.style.display = 'block';
+    errEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    document.getElementById('login-password').value = '';
+    return;
+  }
+  currentUser = { id: data.id, username: data.username, name: data.name, role: data.role };
+  sessionStorage.setItem('riderops_user', JSON.stringify(currentUser));
+  showApp();
+}
+
+// ── 앱 표시 ──
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.querySelector('.layout').style.display = 'flex';
+
+  // 사이드바 사용자 정보
+  const name = currentUser.name || currentUser.username;
+  document.getElementById('sidebar-username').textContent = name;
+  document.getElementById('sidebar-avatar').textContent = name[0] || '관';
+  document.getElementById('sidebar-role').textContent =
+    currentUser.role === 'master' ? '마스터' : '관리자';
+
+  // 마스터만 관리자 등록 메뉴 표시
+  document.getElementById('nav-admin-mgmt').style.display =
+    currentUser.role === 'master' ? 'flex' : 'none';
+
+  switchTabById('drivers');
+  loadAll();
+}
+
+// ── 로그아웃 ──
+function doLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  sessionStorage.removeItem('riderops_user');
+  currentUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.querySelector('.layout').style.display = 'none';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ── 관리자 목록 로드 ──
+async function loadAdminUsers() {
+  const { data } = await sb.from('admin_users').select('*').order('created_at');
+  const tb = document.getElementById('admin-list-tbody');
+  if (!data || !data.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">등록된 관리자가 없습니다</div></div></td></tr>';
+    return;
+  }
+  tb.innerHTML = data.map(a => `
+    <tr>
+      <td>${a.name||'-'}</td>
+      <td style="font-family:monospace;color:var(--text2)">${a.username}</td>
+      <td>${a.role==='master'?'<span class="badge badge-purple">마스터</span>':'<span class="badge badge-blue">관리자</span>'}</td>
+      <td style="color:var(--text3);font-size:12px">${(a.created_at||'').slice(0,10)}</td>
+      <td>${a.role!=='master'?`<button class="btn btn-ghost btn-sm" onclick="deleteAdminUser(${a.id},'${a.username}')" style="color:var(--red)">삭제</button>`:''}</td>
+    </tr>`).join('');
+}
+
+// ── 관리자 추가 ──
+async function addAdminUser() {
+  const name  = document.getElementById('new-admin-name').value.trim();
+  const uname = document.getElementById('new-admin-username').value.trim();
+  const pw    = document.getElementById('new-admin-password').value;
+  const pw2   = document.getElementById('new-admin-password2').value;
+  if (!uname)      { showToast('⚠️ 아이디를 입력해주세요'); return; }
+  if (!pw)         { showToast('⚠️ 비밀번호를 입력해주세요'); return; }
+  if (pw !== pw2)  { showToast('⚠️ 비밀번호가 일치하지 않습니다'); return; }
+  const hash = await sha256(pw);
+  setLoading(true);
+  const { error } = await sb.from('admin_users').insert({
+    username: uname, password_hash: hash, role: 'manager', name
+  });
+  setLoading(false);
+  if (error) {
+    showToast(error.code === '23505' ? '⚠️ 이미 존재하는 아이디입니다' : '⚠️ 등록 실패: ' + error.message);
+    return;
+  }
+  document.getElementById('new-admin-name').value = '';
+  document.getElementById('new-admin-username').value = '';
+  document.getElementById('new-admin-password').value = '';
+  document.getElementById('new-admin-password2').value = '';
+  showToast(`✅ ${uname} 관리자가 등록되었습니다`);
+  await loadAdminUsers();
+}
+
+// ── 관리자 삭제 ──
+async function deleteAdminUser(id, username) {
+  if (!confirm(`'${username}' 관리자를 삭제하시겠습니까?`)) return;
+  setLoading(true);
+  const { error } = await sb.from('admin_users').delete().eq('id', id);
+  setLoading(false);
+  if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
+  showToast(`🗑 ${username} 관리자가 삭제되었습니다`);
+  await loadAdminUsers();
+}
+
+// ── 탭 전환 시 관리자 목록 로드 ──
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -1903,8 +2116,16 @@ function showToast(msg) {
 
 // ── 초기 로드 ──
 document.getElementById('inp-joindate').value = new Date().toISOString().slice(0,10);
-switchTabById('drivers');
-loadAll();
+
+// 세션 복원
+const savedUser = sessionStorage.getItem('riderops_user');
+if (savedUser) {
+  currentUser = JSON.parse(savedUser);
+  showApp();
+} else {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.querySelector('.layout').style.display = 'none';
+}
 </script>
 </body>
 </html>
