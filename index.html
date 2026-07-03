@@ -254,8 +254,18 @@
             </div>
             <div class="form-row-2">
               <div class="form-row">
-                <div class="form-label">연락처 *</div>
+                <div class="form-label">연락처1 * <span style="color:var(--text3);font-size:11px">(연락 가능한 번호)</span></div>
                 <input class="form-input" id="inp-phone" placeholder="010-0000-0000">
+              </div>
+              <div class="form-row">
+                <div class="form-label">연락처2 <span style="color:var(--text3);font-size:11px">(추가 연락처)</span></div>
+                <input class="form-input" id="inp-phone2" placeholder="010-0000-0000">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-row">
+                <div class="form-label">주민등록번호</div>
+                <input class="form-input" id="inp-resident" placeholder="000000-0000000" maxlength="14" oninput="formatResident(this)">
               </div>
               <div class="form-row">
                 <div class="form-label">생년월일</div>
@@ -739,8 +749,18 @@
       </div>
       <div class="form-row-2">
         <div class="form-row">
-          <div class="form-label">연락처 *</div>
+          <div class="form-label">연락처1 * <span style="color:var(--text3);font-size:11px">(연락 가능한 번호)</span></div>
           <input class="form-input" id="edit-phone" placeholder="010-0000-0000">
+        </div>
+        <div class="form-row">
+          <div class="form-label">연락처2 <span style="color:var(--text3);font-size:11px">(추가 연락처)</span></div>
+          <input class="form-input" id="edit-phone2" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <div class="form-label">주민등록번호</div>
+          <input class="form-input" id="edit-resident" placeholder="000000-0000000" maxlength="14" oninput="formatResident(this)">
         </div>
         <div class="form-row">
           <div class="form-label">생년월일</div>
@@ -1198,33 +1218,37 @@ async function deleteAllSettlements() {
 
 // ── 기사 추가 ──
 async function addDriver() {
-  const name  = document.getElementById('inp-name').value.trim();
-  const phone = document.getElementById('inp-phone').value.trim();
-  if (!name || !phone) { showToast('⚠️ 이름과 연락처를 입력해주세요'); return; }
+  const name     = document.getElementById('inp-name').value.trim();
+  const phone    = document.getElementById('inp-phone').value.trim();
+  const resident = document.getElementById('inp-resident').value.trim();
+  if (!name)     { showToast('⚠️ 기사명을 입력해주세요'); return; }
+  if (!phone)    { showToast('⚠️ 연락처1을 입력해주세요'); return; }
   setLoading(true);
   const { error } = await sb.from('drivers').insert({
-    driverid:      document.getElementById('inp-driverid').value.trim(),
+    driverid:        document.getElementById('inp-driverid').value.trim(),
     name, phone,
-    birth:         document.getElementById('inp-birth').value || null,
-    join_date:     document.getElementById('inp-joindate').value || new Date().toISOString().slice(0,10),
-    branch:        document.getElementById('inp-branch').value.trim(),
-    manager:       document.getElementById('inp-manager').value.trim(),
-    channel:       document.getElementById('inp-channel').value.trim(),
-    callfee:       parseFloat(document.getElementById('inp-callfee').value) || 0,
-    prepay:        parseFloat(document.getElementById('inp-prepay').value) || 0,
-    deduct1_label: document.getElementById('inp-deduct1-label').value.trim(),
-    deduct1:       parseInt(document.getElementById('inp-deduct1').value) || 0,
-    deduct2_label: document.getElementById('inp-deduct2-label').value.trim(),
-    deduct2:       parseInt(document.getElementById('inp-deduct2').value) || 0,
-    tax_rate:      document.getElementById('inp-apply-tax').checked ? appSettings.tax_rate : 0,
-    emp_ins_rate:  document.getElementById('inp-apply-emp').checked ? appSettings.emp_ins_rate : 0,
-    acc_ins_rate:  document.getElementById('inp-apply-acc').checked ? appSettings.acc_ins_rate : 0,
-    settle_type:   document.getElementById('inp-settle').value,
-    account_name:  document.getElementById('inp-accountname').value.trim(),
-    bank:          document.getElementById('inp-bank').value.trim(),
-    account_number:document.getElementById('inp-account').value.trim(),
-    notes:         document.getElementById('inp-notes').value.trim(),
-    status:        'active',
+    phone2:          document.getElementById('inp-phone2').value.trim(),
+    resident_number: resident,
+    birth:           document.getElementById('inp-birth').value || null,
+    join_date:       document.getElementById('inp-joindate').value || new Date().toISOString().slice(0,10),
+    branch:          document.getElementById('inp-branch').value.trim(),
+    manager:         document.getElementById('inp-manager').value.trim(),
+    channel:         document.getElementById('inp-channel').value.trim(),
+    callfee:         parseFloat(document.getElementById('inp-callfee').value) || 0,
+    prepay:          parseFloat(document.getElementById('inp-prepay').value) || 0,
+    deduct1_label:   document.getElementById('inp-deduct1-label').value.trim(),
+    deduct1:         parseInt(document.getElementById('inp-deduct1').value) || 0,
+    deduct2_label:   document.getElementById('inp-deduct2-label').value.trim(),
+    deduct2:         parseInt(document.getElementById('inp-deduct2').value) || 0,
+    tax_rate:        document.getElementById('inp-apply-tax').checked ? appSettings.tax_rate : 0,
+    emp_ins_rate:    document.getElementById('inp-apply-emp').checked ? appSettings.emp_ins_rate : 0,
+    acc_ins_rate:    document.getElementById('inp-apply-acc').checked ? appSettings.acc_ins_rate : 0,
+    settle_type:     document.getElementById('inp-settle').value,
+    account_name:    document.getElementById('inp-accountname').value.trim(),
+    bank:            document.getElementById('inp-bank').value.trim(),
+    account_number:  document.getElementById('inp-account').value.trim(),
+    notes:           document.getElementById('inp-notes').value.trim(),
+    status:          'active',
   });
   setLoading(false);
   if (error) { showToast('⚠️ 저장 실패: ' + error.message); return; }
@@ -1242,7 +1266,9 @@ function openEditModal(id) {
   if (!d) return;
   const fields = {
     'edit-id': d.id, 'edit-driverid': d.driverid||'', 'edit-name': d.name||'',
-    'edit-phone': d.phone||'', 'edit-birth': d.birth||'', 'edit-joindate': d.join_date||'',
+    'edit-phone': d.phone||'', 'edit-phone2': d.phone2||'',
+    'edit-resident': d.resident_number||'',
+    'edit-birth': d.birth||'', 'edit-joindate': d.join_date||'',
     'edit-branch': d.branch||'', 'edit-manager': d.manager||'', 'edit-channel': d.channel||'',
     'edit-callfee': d.callfee||'', 'edit-prepay': d.prepay||'',
     'edit-deduct1-label': d.deduct1_label||'', 'edit-deduct1': d.deduct1||'',
@@ -1266,34 +1292,38 @@ function openEditModal(id) {
 
 // ── 기사 수정 저장 ──
 async function saveEditDriver() {
-  const id    = parseInt(document.getElementById('edit-id').value);
-  const name  = document.getElementById('edit-name').value.trim();
-  const phone = document.getElementById('edit-phone').value.trim();
-  if (!name || !phone) { showToast('⚠️ 이름과 연락처를 입력해주세요'); return; }
+  const id       = parseInt(document.getElementById('edit-id').value);
+  const name     = document.getElementById('edit-name').value.trim();
+  const phone    = document.getElementById('edit-phone').value.trim();
+  const resident = document.getElementById('edit-resident').value.trim();
+  if (!name)  { showToast('⚠️ 기사명을 입력해주세요'); return; }
+  if (!phone) { showToast('⚠️ 연락처1을 입력해주세요'); return; }
   setLoading(true);
   const { error } = await sb.from('drivers').update({
-    driverid:      document.getElementById('edit-driverid').value.trim(),
+    driverid:        document.getElementById('edit-driverid').value.trim(),
     name, phone,
-    birth:         document.getElementById('edit-birth').value || null,
-    join_date:     document.getElementById('edit-joindate').value,
-    branch:        document.getElementById('edit-branch').value.trim(),
-    manager:       document.getElementById('edit-manager').value.trim(),
-    channel:       document.getElementById('edit-channel').value.trim(),
-    callfee:       parseFloat(document.getElementById('edit-callfee').value) || 0,
-    prepay:        parseFloat(document.getElementById('edit-prepay').value) || 0,
-    deduct1_label: document.getElementById('edit-deduct1-label').value.trim(),
-    deduct1:       parseInt(document.getElementById('edit-deduct1').value) || 0,
-    deduct2_label: document.getElementById('edit-deduct2-label').value.trim(),
-    deduct2:       parseInt(document.getElementById('edit-deduct2').value) || 0,
-    tax_rate:      document.getElementById('edit-apply-tax').checked ? appSettings.tax_rate : 0,
-    emp_ins_rate:  document.getElementById('edit-apply-emp').checked ? appSettings.emp_ins_rate : 0,
-    acc_ins_rate:  document.getElementById('edit-apply-acc').checked ? appSettings.acc_ins_rate : 0,
-    settle_type:   document.getElementById('edit-settle').value,
-    status:        document.getElementById('edit-status').value,
-    account_name:  document.getElementById('edit-accountname').value.trim(),
-    bank:          document.getElementById('edit-bank').value.trim(),
-    account_number:document.getElementById('edit-account').value.trim(),
-    notes:         document.getElementById('edit-notes').value.trim(),
+    phone2:          document.getElementById('edit-phone2').value.trim(),
+    resident_number: resident,
+    birth:           document.getElementById('edit-birth').value || null,
+    join_date:       document.getElementById('edit-joindate').value,
+    branch:          document.getElementById('edit-branch').value.trim(),
+    manager:         document.getElementById('edit-manager').value.trim(),
+    channel:         document.getElementById('edit-channel').value.trim(),
+    callfee:         parseFloat(document.getElementById('edit-callfee').value) || 0,
+    prepay:          parseFloat(document.getElementById('edit-prepay').value) || 0,
+    deduct1_label:   document.getElementById('edit-deduct1-label').value.trim(),
+    deduct1:         parseInt(document.getElementById('edit-deduct1').value) || 0,
+    deduct2_label:   document.getElementById('edit-deduct2-label').value.trim(),
+    deduct2:         parseInt(document.getElementById('edit-deduct2').value) || 0,
+    tax_rate:        document.getElementById('edit-apply-tax').checked ? appSettings.tax_rate : 0,
+    emp_ins_rate:    document.getElementById('edit-apply-emp').checked ? appSettings.emp_ins_rate : 0,
+    acc_ins_rate:    document.getElementById('edit-apply-acc').checked ? appSettings.acc_ins_rate : 0,
+    settle_type:     document.getElementById('edit-settle').value,
+    status:          document.getElementById('edit-status').value,
+    account_name:    document.getElementById('edit-accountname').value.trim(),
+    bank:            document.getElementById('edit-bank').value.trim(),
+    account_number:  document.getElementById('edit-account').value.trim(),
+    notes:           document.getElementById('edit-notes').value.trim(),
   }).eq('id', id);
   setLoading(false);
   if (error) { showToast('⚠️ 수정 실패: ' + error.message); return; }
@@ -1358,7 +1388,9 @@ async function openDriverDetail(id) {
   // 기본 정보
   document.getElementById('detail-basic').innerHTML =
     detailRow('기사명', d.name) +
-    detailRow('연락처', d.phone) +
+    detailRow('연락처1', d.phone) +
+    detailRow('연락처2', d.phone2) +
+    detailRow('주민등록번호', d.resident_number ? d.resident_number.replace(/(\d{6})(\d{7})/, '$1-$2') : '-') +
     detailRow('생년월일', d.birth) +
     detailRow('가입날짜', d.join_date) +
     detailRow('소속지점', d.branch) +
@@ -1663,7 +1695,8 @@ function switchTabById(id) {
 }
 
 function resetRegisterForm() {
-  ['inp-driverid','inp-name','inp-phone','inp-birth','inp-branch','inp-manager','inp-channel',
+  ['inp-driverid','inp-name','inp-phone','inp-phone2','inp-resident','inp-birth',
+   'inp-branch','inp-manager','inp-channel',
    'inp-callfee','inp-prepay','inp-deduct1-label','inp-deduct1','inp-deduct2-label','inp-deduct2',
    'inp-accountname','inp-bank','inp-account','inp-notes'
   ].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -1672,6 +1705,13 @@ function resetRegisterForm() {
   document.getElementById('inp-apply-tax').checked = false;
   document.getElementById('inp-apply-emp').checked = false;
   document.getElementById('inp-apply-acc').checked = false;
+}
+
+// ── 주민번호 자동 하이픈 ──
+function formatResident(el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  if (v.length > 6) v = v.slice(0,6) + '-' + v.slice(6,13);
+  el.value = v;
 }
 
 // ── 설정 저장 ──
