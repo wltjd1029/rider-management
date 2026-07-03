@@ -187,6 +187,10 @@
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  .sort-icon { font-size:11px; color:var(--text3); margin-left:3px; transition:color 0.15s; }
+  thead th:hover .sort-icon { color:var(--text2); }
+  thead th.sort-active { color:var(--accent2); }
+  thead th.sort-active .sort-icon { color:var(--accent2); }
 </style>
 </head>
 <body>
@@ -451,14 +455,14 @@
         <table>
           <thead>
             <tr>
-              <th>기사 ID</th>
-              <th>기사명</th>
+              <th onclick="sortDrivers('driverid')" style="cursor:pointer;user-select:none">기사 ID <span id="sort-driverid" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('name')" style="cursor:pointer;user-select:none">기사명 <span id="sort-name" class="sort-icon">⇅</span></th>
               <th>연락처</th>
-              <th>소속지점</th>
-              <th>가입일</th>
-              <th>정산주기</th>
-              <th>콜수수료</th>
-              <th>상태</th>
+              <th onclick="sortDrivers('branch')" style="cursor:pointer;user-select:none">소속지점 <span id="sort-branch" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('join_date')" style="cursor:pointer;user-select:none">가입일 <span id="sort-join_date" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('settle_type')" style="cursor:pointer;user-select:none">정산주기 <span id="sort-settle_type" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('callfee')" style="cursor:pointer;user-select:none">콜수수료 <span id="sort-callfee" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('status')" style="cursor:pointer;user-select:none">상태 <span id="sort-status" class="sort-icon">⇅</span></th>
               <th></th>
             </tr>
           </thead>
@@ -1147,15 +1151,67 @@ async function loadAll() {
   setLoading(false);
 }
 
+// ── 정렬 ──
+let sortKey = '';
+let sortAsc = true;
+
+function sortDrivers(key) {
+  if (sortKey === key) {
+    sortAsc = !sortAsc;
+  } else {
+    sortKey = key;
+    sortAsc = true;
+  }
+  // 아이콘 업데이트
+  document.querySelectorAll('.sort-icon').forEach(el => el.textContent = '⇅');
+  document.querySelectorAll('thead th').forEach(el => el.classList.remove('sort-active'));
+  const iconEl = document.getElementById('sort-' + key);
+  if (iconEl) {
+    iconEl.textContent = sortAsc ? '↑' : '↓';
+    iconEl.closest('th').classList.add('sort-active');
+  }
+  // 정렬 적용
+  const q = document.querySelector('.search-input')?.value || '';
+  filterDrivers(q);
+}
+
+function getSortedDrivers(list) {
+  if (!sortKey) return list;
+  return [...list].sort((a, b) => {
+    let va = a[sortKey] ?? '';
+    let vb = b[sortKey] ?? '';
+    // 숫자형
+    if (sortKey === 'callfee') {
+      va = Number(va) || 0;
+      vb = Number(vb) || 0;
+      return sortAsc ? va - vb : vb - va;
+    }
+    // 상태 정렬 순서: active → pause → inactive
+    if (sortKey === 'status') {
+      const order = { active: 0, pause: 1, inactive: 2 };
+      va = order[va] ?? 9;
+      vb = order[vb] ?? 9;
+      return sortAsc ? va - vb : vb - va;
+    }
+    // 문자열
+    va = String(va).toLowerCase();
+    vb = String(vb).toLowerCase();
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+}
+
 // ── 필터 ──
 let statusFilter = '';
 function filterDrivers(q) {
-  const list = drivers.filter(d =>
+  let list = drivers.filter(d =>
     (d.name.includes(q) || d.phone.includes(q)) &&
     (statusFilter==='' || d.status===statusFilter));
+  list = getSortedDrivers(list);
   renderDrivers(list);
 }
-function filterStatus(v) { statusFilter=v; filterDrivers(document.querySelector('.search-input').value||''); }
+function filterStatus(v) { statusFilter=v; filterDrivers(document.querySelector('.search-input')?.value||''); }
 function filterSettlements() {
   const t = document.getElementById('settle-type-filter').value;
   renderSettlements(t ? settlements.filter(s=>s.settle_type===t) : settlements);
