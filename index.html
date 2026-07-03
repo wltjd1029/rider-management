@@ -462,6 +462,7 @@
               <th onclick="sortDrivers('join_date')" style="cursor:pointer;user-select:none">가입일 <span id="sort-join_date" class="sort-icon">⇅</span></th>
               <th onclick="sortDrivers('settle_type')" style="cursor:pointer;user-select:none">정산주기 <span id="sort-settle_type" class="sort-icon">⇅</span></th>
               <th onclick="sortDrivers('callfee')" style="cursor:pointer;user-select:none">콜수수료 <span id="sort-callfee" class="sort-icon">⇅</span></th>
+              <th onclick="sortDrivers('prepay')" style="cursor:pointer;user-select:none">선지급수수료 <span id="sort-prepay" class="sort-icon">⇅</span></th>
               <th onclick="sortDrivers('status')" style="cursor:pointer;user-select:none">상태 <span id="sort-status" class="sort-icon">⇅</span></th>
               <th></th>
             </tr>
@@ -1012,7 +1013,7 @@ function platBadge(p) {
 
 function renderDrivers(list) {
   const tb = document.getElementById('driver-tbody');
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">등록된 기사가 없습니다</div></div></td></tr>'; return; }
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">등록된 기사가 없습니다</div></div></td></tr>'; return; }
   tb.innerHTML = list.map(d => `
     <tr>
       <td style="color:var(--text3);font-size:12px;font-family:monospace">${d.driverid||'-'}</td>
@@ -1030,6 +1031,7 @@ function renderDrivers(list) {
       <td style="color:var(--text3)">${d.join_date||'-'}</td>
       <td>${settleBadge(d.settle_type)}</td>
       <td class="amount" style="font-size:13px">${d.callfee?Number(d.callfee).toLocaleString()+'원':'-'}</td>
+      <td class="amount" style="font-size:13px">${d.prepay?Number(d.prepay).toLocaleString()+'원':'-'}</td>
       <td>${statusBadge(d.status)}</td>
       <td>
         <div style="display:flex;gap:6px">
@@ -1181,7 +1183,7 @@ function getSortedDrivers(list) {
     let va = a[sortKey] ?? '';
     let vb = b[sortKey] ?? '';
     // 숫자형
-    if (sortKey === 'callfee') {
+    if (sortKey === 'callfee' || sortKey === 'prepay') {
       va = Number(va) || 0;
       vb = Number(vb) || 0;
       return sortAsc ? va - vb : vb - va;
