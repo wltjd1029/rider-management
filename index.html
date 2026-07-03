@@ -191,6 +191,67 @@
   thead th:hover .sort-icon { color:var(--text2); }
   thead th.sort-active { color:var(--accent2); }
   thead th.sort-active .sort-icon { color:var(--accent2); }
+
+  /* 햄버거 버튼 */
+  .hamburger { display:none; position:fixed; top:14px; left:14px; z-index:8500; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; font-size:18px; color:var(--text); }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:8000; }
+
+  /* 모바일 카드형 기사 목록 */
+  .driver-cards { display:none; }
+  .driver-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+  .driver-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .driver-card-info { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .driver-card-row { font-size:12px; }
+  .driver-card-label { color:var(--text3); margin-bottom:2px; }
+  .driver-card-val { color:var(--text); font-weight:500; }
+  .driver-card-actions { display:flex; gap:8px; }
+
+  /* 모바일 카드형 정산 목록 */
+  .settle-cards { display:none; }
+  .settle-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+  .settle-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .settle-card-rows { display:flex; flex-direction:column; gap:6px; }
+  .settle-card-row { display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .settle-card-row:last-child { border-bottom:none; }
+  .settle-card-key { color:var(--text3); }
+  .settle-card-net { font-size:16px; font-weight:700; color:var(--green); margin-top:10px; text-align:right; }
+
+  @media (max-width: 768px) {
+    .hamburger { display:flex; align-items:center; }
+    .sidebar { transform:translateX(-100%); transition:transform 0.25s; z-index:8100; }
+    .sidebar.open { transform:translateX(0); }
+    .sidebar-overlay.open { display:block; }
+    .main { margin-left:0; padding:70px 14px 24px; }
+    .page-title { font-size:18px; }
+    .page-header { flex-wrap:wrap; gap:10px; }
+    .header-actions { flex-wrap:wrap; }
+    .stats-row { grid-template-columns:repeat(2, 1fr); }
+    .stat-card:last-child { grid-column:span 2; }
+    .stat-val { font-size:22px; }
+    /* 테이블 숨기고 카드 표시 */
+    .driver-table-wrap { display:none; }
+    .driver-cards { display:block; }
+    .settle-table-wrap { display:none; }
+    .settle-cards { display:block; }
+    /* 폼 */
+    .form-row-2 { grid-template-columns:1fr; }
+    .fee-grid { grid-template-columns:1fr; }
+    /* 모달 */
+    .modal { width:95vw !important; }
+    .modal-body { max-height:65vh; }
+    /* 카드 헤더 */
+    .card-header { flex-wrap:wrap; gap:8px; }
+    .card-actions { flex-wrap:wrap; }
+    /* 검색 */
+    .search-input { width:100%; }
+    /* 기사 상세 그리드 */
+    #sec-driver-detail > div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+  }
+
+  @media (max-width: 380px) {
+    .stats-row { grid-template-columns:1fr 1fr; }
+    .badge { font-size:10px; padding:2px 6px; }
+  }
   /* 로그인 화면 */
   .login-screen { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:9000; }
   .login-box { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:40px; width:380px; }
@@ -221,6 +282,10 @@
     <button class="btn btn-primary" style="width:100%;padding:11px;font-size:15px" onclick="doLogin()">로그인</button>
   </div>
 </div>
+
+<!-- 햄버거 버튼 -->
+<button class="hamburger" onclick="toggleSidebar()" id="hamburger-btn">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <div class="layout" style="display:none">
   <!-- Sidebar -->
@@ -488,23 +553,28 @@
             </select>
           </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th onclick="sortDrivers('driverid')" style="cursor:pointer;user-select:none">기사 ID <span id="sort-driverid" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('name')" style="cursor:pointer;user-select:none">기사명 <span id="sort-name" class="sort-icon">⇅</span></th>
-              <th>연락처</th>
-              <th onclick="sortDrivers('branch')" style="cursor:pointer;user-select:none">소속지점 <span id="sort-branch" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('join_date')" style="cursor:pointer;user-select:none">가입일 <span id="sort-join_date" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('settle_type')" style="cursor:pointer;user-select:none">정산주기 <span id="sort-settle_type" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('callfee')" style="cursor:pointer;user-select:none">콜수수료 <span id="sort-callfee" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('prepay')" style="cursor:pointer;user-select:none">선지급수수료 <span id="sort-prepay" class="sort-icon">⇅</span></th>
-              <th onclick="sortDrivers('status')" style="cursor:pointer;user-select:none">상태 <span id="sort-status" class="sort-icon">⇅</span></th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="driver-tbody"></tbody>
-        </table>
+        <!-- 데스크탑 테이블 -->
+        <div class="driver-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortDrivers('driverid')" style="cursor:pointer;user-select:none">기사 ID <span id="sort-driverid" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('name')" style="cursor:pointer;user-select:none">기사명 <span id="sort-name" class="sort-icon">⇅</span></th>
+                <th>연락처</th>
+                <th onclick="sortDrivers('branch')" style="cursor:pointer;user-select:none">소속지점 <span id="sort-branch" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('join_date')" style="cursor:pointer;user-select:none">가입일 <span id="sort-join_date" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('settle_type')" style="cursor:pointer;user-select:none">정산주기 <span id="sort-settle_type" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('callfee')" style="cursor:pointer;user-select:none">콜수수료 <span id="sort-callfee" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('prepay')" style="cursor:pointer;user-select:none">선지급수수료 <span id="sort-prepay" class="sort-icon">⇅</span></th>
+                <th onclick="sortDrivers('status')" style="cursor:pointer;user-select:none">상태 <span id="sort-status" class="sort-icon">⇅</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="driver-tbody"></tbody>
+          </table>
+        </div>
+        <!-- 모바일 카드형 -->
+        <div class="driver-cards" id="driver-cards" style="padding:12px"></div>
       </div>
     </div>
 
@@ -614,6 +684,8 @@
             <button class="btn btn-ghost btn-sm" onclick="confirmDeleteAllSettlements()" style="color:var(--red)">🗑 전체 삭제</button>
           </div>
         </div>
+        <!-- 데스크탑 테이블 -->
+        <div class="settle-table-wrap">
         <div style="overflow-x:auto">
         <table>
           <thead>
@@ -639,6 +711,9 @@
           <tbody id="settle-tbody"></tbody>
         </table>
         </div>
+        </div>
+        <!-- 모바일 카드형 -->
+        <div class="settle-cards" id="settle-cards" style="padding:12px"></div>
       </div>
     </div>
 
@@ -1133,6 +1208,7 @@ function renderDrivers(list) {
         </div>
       </td>
     </tr>`).join('');
+  renderDriverCards(list);
 }
 
 function renderSettlements(list) {
@@ -1170,6 +1246,7 @@ function renderSettlements(list) {
       <td style="color:var(--text3);font-size:12px">📄 ${s.file_name||''}</td>
     </tr>`;
   }).join('');
+  renderSettleCards(list);
 }
 
 function renderPromos() {
@@ -1948,8 +2025,8 @@ function switchTabById(id) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active');
   });
-  // 관리자 탭 진입 시 목록 로드
   if (id === 'admin') loadAdminUsers();
+  closeSidebar();
 }
 
 function resetRegisterForm() {
@@ -2148,6 +2225,100 @@ function checkDriverId(val) {
 
 // ── 탭 전환 시 관리자 목록 로드 ──
 let toastTimer;
+// ── 햄버거 메뉴 ──
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// ── 모바일 기사 카드 렌더 ──
+function renderDriverCards(list) {
+  const el = document.getElementById('driver-cards');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">등록된 기사가 없습니다</div></div>';
+    return;
+  }
+  el.innerHTML = list.map(d => `
+    <div class="driver-card">
+      <div class="driver-card-header">
+        <div class="driver-cell" style="cursor:pointer" onclick="openDriverDetail(${d.id})">
+          <div class="d-avatar">${d.name[0]}</div>
+          <div>
+            <div style="color:var(--accent2);font-weight:600;font-size:15px">${d.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${d.driverid||''}</div>
+          </div>
+        </div>
+        ${statusBadge(d.status)}
+      </div>
+      <div class="driver-card-info">
+        <div class="driver-card-row">
+          <div class="driver-card-label">연락처</div>
+          <div class="driver-card-val">${d.phone||'-'}</div>
+        </div>
+        <div class="driver-card-row">
+          <div class="driver-card-label">소속지점</div>
+          <div class="driver-card-val">${d.branch||'-'}</div>
+        </div>
+        <div class="driver-card-row">
+          <div class="driver-card-label">가입일</div>
+          <div class="driver-card-val">${d.join_date||'-'}</div>
+        </div>
+        <div class="driver-card-row">
+          <div class="driver-card-label">정산주기</div>
+          <div class="driver-card-val">${d.settle_type==='daily'?'일정산':'주정산'}</div>
+        </div>
+      </div>
+      <div class="driver-card-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${d.id})">✏️ 수정</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleStatus(${d.id})" style="${d.status==='active'?'color:var(--red)':''}">${d.status==='active'?'해지':'재가입'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="confirmDelete(${d.id},'${d.name}')" style="color:var(--red)">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── 모바일 정산 카드 렌더 ──
+function renderSettleCards(list) {
+  const el = document.getElementById('settle-cards');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📂</div><div class="empty-text">정산 내역이 없습니다</div></div>';
+    return;
+  }
+  el.innerHTML = list.map(s => {
+    const otherDeduct = (s.deduct1||0) + (s.deduct2||0);
+    return `
+    <div class="settle-card">
+      <div class="settle-card-header">
+        <div class="driver-cell">
+          <div class="d-avatar">${(s.driver_name||'?')[0]}</div>
+          <div>
+            <div style="font-weight:600;font-size:15px">${s.driver_name||'-'}</div>
+            <div style="font-size:11px;color:var(--text3)">${s.driver_code||''}</div>
+          </div>
+        </div>
+        ${s.settle_type==='daily'?'<span class="badge badge-blue">일정산</span>':'<span class="badge badge-purple">주정산</span>'}
+      </div>
+      <div class="settle-card-rows">
+        <div class="settle-card-row"><span class="settle-card-key">정산기간</span><span>${s.period_start||''}${s.settle_type==='weekly'?' ~ '+(s.period_end||''):''}</span></div>
+        <div class="settle-card-row"><span class="settle-card-key">완료건수</span><span>${s.done_count||0}건 / 전체 ${s.total_count||0}건</span></div>
+        <div class="settle-card-row"><span class="settle-card-key">배달처리비</span><span>${fmt(s.proc)}</span></div>
+        ${s.callfee_total?`<div class="settle-card-row"><span class="settle-card-key">콜수수료</span><span style="color:var(--red)">-${fmt(s.callfee_total)}</span></div>`:''}
+        ${s.prepay_total?`<div class="settle-card-row"><span class="settle-card-key">선지급</span><span style="color:var(--red)">-${fmt(s.prepay_total)}</span></div>`:''}
+        ${s.tax_amt?`<div class="settle-card-row"><span class="settle-card-key">원천징수</span><span style="color:var(--red)">-${fmt(s.tax_amt)}</span></div>`:''}
+        ${s.emp_amt?`<div class="settle-card-row"><span class="settle-card-key">고용보험</span><span style="color:var(--red)">-${fmt(s.emp_amt)}</span></div>`:''}
+        ${s.acc_amt?`<div class="settle-card-row"><span class="settle-card-key">산재보험</span><span style="color:var(--red)">-${fmt(s.acc_amt)}</span></div>`:''}
+        ${otherDeduct?`<div class="settle-card-row"><span class="settle-card-key">기타차감</span><span style="color:var(--red)">-${fmt(otherDeduct)}</span></div>`:''}
+      </div>
+      <div class="settle-card-net">실지급액 +${fmt(s.net)}</div>
+    </div>`;
+  }).join('');
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
