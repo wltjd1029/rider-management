@@ -1965,9 +1965,14 @@ function exportSettlementsExcel(mode) {
 
   const rows = list.map(s => {
     const otherDeduct = (s.deduct1||0) + (s.deduct2||0);
+    // 기사 계좌 정보 조회
+    const d = drivers.find(x => x.name === s.driver_name || x.driverid === s.driver_code);
     return {
       '기사명':           s.driver_name || '',
       '기사ID':           s.driver_code || '',
+      '예금주':           d?.account_name || '',
+      '은행':             d?.bank || '',
+      '계좌번호':         d?.account_number || '',
       '정산시작일':        s.period_start || '',
       '정산종료일':        s.period_end || '',
       '구분':             s.settle_type === 'daily' ? '일정산' : '주정산',
