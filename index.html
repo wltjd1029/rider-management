@@ -1829,6 +1829,8 @@ function exportSettlementsExcel(mode) {
   XLSX.writeFile(wb, filename);
   showToast(`✅ ${filename} 다운로드 완료`);
 }
+
+function parseNum(v) {
   if (!v) return 0;
   return parseInt(String(v).replace(/[^\d]/g,'')) || 0;
 }
