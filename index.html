@@ -552,11 +552,19 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">정산 내역</div>
+          <div class="card-actions" id="settle-actions" style="display:none;gap:8px">
+            <span id="settle-checked-count" style="font-size:13px;color:var(--text3)"></span>
+            <button class="btn btn-ghost btn-sm" onclick="deleteSelectedSettlements()" style="color:var(--red)">🗑 선택 삭제</button>
+          </div>
+          <div class="card-actions" id="settle-default-actions">
+            <button class="btn btn-ghost btn-sm" onclick="confirmDeleteAllSettlements()" style="color:var(--red)">🗑 전체 삭제</button>
+          </div>
         </div>
         <div style="overflow-x:auto">
         <table>
           <thead>
             <tr>
+              <th style="width:36px"><input type="checkbox" id="settle-check-all" onchange="toggleAllSettleCheck(this)" style="cursor:pointer;accent-color:var(--accent)"></th>
               <th>기사명</th>
               <th>기사ID</th>
               <th>정산기간</th>
@@ -805,6 +813,27 @@
   </div>
 </div>
 
+<!-- 정산 전체삭제 확인 모달 -->
+<div class="modal-bg" id="modal-delete-all-settlements">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)">⚠️ 정산 내역 전체 삭제</div>
+      <button class="modal-close" onclick="closeModal('modal-delete-all-settlements')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <p style="color:var(--text2);line-height:1.8">
+        저장된 <strong style="color:var(--text)" id="settle-total-count"></strong>건의 정산 내역이<br>
+        <span style="color:var(--red);font-weight:600">영구적으로 삭제</span>되며 복구할 수 없습니다.<br>
+        정말 전체 삭제하시겠습니까?
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-delete-all-settlements')">취소</button>
+      <button class="btn btn-sm" onclick="deleteAllSettlements()" style="background:var(--red);color:#fff">전체 삭제</button>
+    </div>
+  </div>
+</div>
+
 <!-- 기사 삭제 확인 모달 -->
 <div class="modal-bg" id="modal-delete-driver">
   <div class="modal" style="width:400px">
@@ -942,13 +971,22 @@ function renderDrivers(list) {
 
 function renderSettlements(list) {
   const tb = document.getElementById('settle-tbody');
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="15"><div class="empty"><div class="empty-icon">📂</div><div class="empty-text">정산 내역이 없습니다</div></div></td></tr>'; return; }
+  // 전체선택 체크박스 초기화
+  const allChk = document.getElementById('settle-check-all');
+  if (allChk) allChk.checked = false;
+  updateSettleActions();
+
+  if (!list.length) {
+    tb.innerHTML = '<tr><td colspan="16"><div class="empty"><div class="empty-icon">📂</div><div class="empty-text">정산 내역이 없습니다</div></div></td></tr>';
+    return;
+  }
   tb.innerHTML = list.map(s => {
     const otherDeduct = (s.deduct1||0) + (s.deduct2||0);
     const d1txt = s.deduct1 ? `${s.deduct1_label}: ${fmt(s.deduct1)}` : '';
     const d2txt = s.deduct2 ? `${s.deduct2_label}: ${fmt(s.deduct2)}` : '';
     const deductTip = [d1txt,d2txt].filter(Boolean).join(' / ') || '-';
     return `<tr>
+      <td style="text-align:center"><input type="checkbox" class="settle-chk" value="${s.id}" onchange="updateSettleActions()" style="cursor:pointer;accent-color:var(--accent)"></td>
       <td><div class="driver-cell"><div class="d-avatar">${(s.driver_name||'?')[0]}</div>${s.driver_name||'-'}</div></td>
       <td style="color:var(--text3);font-size:12px;font-family:monospace">${s.driver_code||'-'}</td>
       <td style="color:var(--text3);font-size:12px;white-space:nowrap">${s.period_start||''}${s.settle_type==='weekly'?' ~ '+(s.period_end||''):''}</td>
@@ -1036,6 +1074,61 @@ function filterStatus(v) { statusFilter=v; filterDrivers(document.querySelector(
 function filterSettlements() {
   const t = document.getElementById('settle-type-filter').value;
   renderSettlements(t ? settlements.filter(s=>s.settle_type===t) : settlements);
+}
+
+// ── 정산 체크박스 ──
+function toggleAllSettleCheck(allChk) {
+  document.querySelectorAll('.settle-chk').forEach(c => c.checked = allChk.checked);
+  updateSettleActions();
+}
+
+function updateSettleActions() {
+  const checked = document.querySelectorAll('.settle-chk:checked');
+  const total   = document.querySelectorAll('.settle-chk');
+  const allChk  = document.getElementById('settle-check-all');
+  const actSel  = document.getElementById('settle-actions');
+  const actDef  = document.getElementById('settle-default-actions');
+  const countEl = document.getElementById('settle-checked-count');
+  if (allChk && total.length > 0) allChk.checked = checked.length === total.length;
+  if (checked.length > 0) {
+    actSel.style.display = 'flex';
+    actDef.style.display = 'none';
+    countEl.textContent  = `${checked.length}건 선택됨`;
+  } else {
+    actSel.style.display = 'none';
+    actDef.style.display = 'flex';
+  }
+}
+
+// ── 선택 삭제 ──
+async function deleteSelectedSettlements() {
+  const checked = [...document.querySelectorAll('.settle-chk:checked')];
+  if (!checked.length) return;
+  const ids = checked.map(c => parseInt(c.value));
+  if (!confirm(`선택한 ${ids.length}건의 정산 내역을 삭제하시겠습니까?`)) return;
+  setLoading(true);
+  const { error } = await sb.from('settlements').delete().in('id', ids);
+  setLoading(false);
+  if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
+  showToast(`🗑 ${ids.length}건의 정산 내역이 삭제되었습니다`);
+  await loadAll();
+}
+
+// ── 전체 삭제 ──
+function confirmDeleteAllSettlements() {
+  if (!settlements.length) { showToast('⚠️ 삭제할 정산 내역이 없습니다'); return; }
+  document.getElementById('settle-total-count').textContent = settlements.length;
+  openModal('modal-delete-all-settlements');
+}
+
+async function deleteAllSettlements() {
+  setLoading(true);
+  const { error } = await sb.from('settlements').delete().neq('id', 0);
+  setLoading(false);
+  if (error) { showToast('⚠️ 삭제 실패: ' + error.message); return; }
+  closeModal('modal-delete-all-settlements');
+  showToast('🗑 모든 정산 내역이 삭제되었습니다');
+  await loadAll();
 }
 
 // ── 기사 추가 ──
