@@ -641,6 +641,7 @@
                 <th>추가할증</th>
                 <th>피크할증 등</th>
                 <th>지역할증</th>
+                <th>지역할증2</th>
                 <th>대량할증</th>
                 <th>배달처리비</th>
                 <th>소계</th>
@@ -1789,18 +1790,19 @@ function showParsed(filename, rows) {
     weather:    findCol(keys,'기상할증'),
     extra:      findCol(keys,'추가할증'),
     peak:       findCol(keys,'피크할증'),
-    region:     findCol(keys,'지역할증','지역 할증'),
+    region:     keys.find(k => { const n=k.replace(/\s/g,''); return n.includes('지역할증') && !n.includes('지역할증2'); }) || '',
+    region2:    findCol(keys,'지역할증2'),
     bulk:       findCol(keys,'대량할증','대량 할증'),
     processFee: findCol(keys,'배달처리비'),
   };
   document.getElementById('parse-meta').textContent =
-    `총 ${rows.length}건 · 라이더 ${new Set(rows.map(r=>r[C.riderName])).size}명`;
+    `총 ${rows.length}건 · 라이더 ${new Set(rows.map(r=>String(r[C.riderId]||'').trim()||r[C.riderName])).size}명`;
 
   // 건별 원본
   const tb = document.getElementById('parse-tbody');
   tb.innerHTML = rows.map(r => {
     const base=parseNum(r[C.base]), weather=parseNum(r[C.weather]), extra=parseNum(r[C.extra]);
-    const peak=parseNum(r[C.peak]), region=parseNum(r[C.region]), bulk=parseNum(r[C.bulk]);
+    const peak=parseNum(r[C.peak]), region=parseNum(r[C.region]), region2=parseNum(r[C.region2]), bulk=parseNum(r[C.bulk]);
     const proc=parseNum(r[C.processFee]);
     const name = r[C.riderName]||'-';
     const st = r[C.status]||'';
@@ -1821,9 +1823,10 @@ function showParsed(filename, rows) {
       <td class="amount">${extra?fmt(extra):'-'}</td>
       <td class="amount">${peak?fmt(peak):'-'}</td>
       <td class="amount">${region?fmt(region):'-'}</td>
+      <td class="amount">${region2?fmt(region2):'-'}</td>
       <td class="amount">${bulk?fmt(bulk):'-'}</td>
       <td class="amount amount-negative">${proc?fmt(proc):'-'}</td>
-      <td class="amount amount-positive" style="font-size:13px;font-weight:700">+${fmt(base+weather+extra+peak+region+bulk-proc)}</td>
+      <td class="amount amount-positive" style="font-size:13px;font-weight:700">+${fmt(base+weather+extra+peak+region+region2+bulk-proc)}</td>
     </tr>`;
   }).join('');
 
@@ -1831,14 +1834,16 @@ function showParsed(filename, rows) {
   const summary = {};
   rows.forEach(r => {
     const name = r[C.riderName]||'알 수 없음';
-    if (!summary[name]) summary[name] = { id:r[C.riderId]||'-', count:0, base:0, surcharge:0, proc:0 };
+    const rid = String(r[C.riderId]||'').trim();
+    const key = rid ? 'id:'+rid : 'nm:'+name;
+    if (!summary[key]) summary[key] = { name, id:rid||'-', count:0, base:0, surcharge:0, proc:0 };
     const proc = parseNum(r[C.processFee]);
-    summary[name].count++;
-    summary[name].base      += parseNum(r[C.base]);
-    summary[name].surcharge += parseNum(r[C.weather])+parseNum(r[C.extra])+parseNum(r[C.peak])+parseNum(r[C.region])+parseNum(r[C.bulk]);
-    summary[name].proc      += proc;
+    summary[key].count++;
+    summary[key].base      += parseNum(r[C.base]);
+    summary[key].surcharge += parseNum(r[C.weather])+parseNum(r[C.extra])+parseNum(r[C.peak])+parseNum(r[C.region])+parseNum(r[C.region2])+parseNum(r[C.bulk]);
+    summary[key].proc      += proc;
   });
-  document.getElementById('parse-summary-tbody').innerHTML = Object.entries(summary).map(([name,s]) =>
+  document.getElementById('parse-summary-tbody').innerHTML = Object.values(summary).map(s => { const name = s.name; return
     `<tr>
       <td><div class="driver-cell"><div class="d-avatar">${name[0]}</div>${name}</div></td>
       <td style="color:var(--text3);font-size:12px">${s.id}</td>
@@ -1847,7 +1852,7 @@ function showParsed(filename, rows) {
       <td class="amount amount-positive">+${fmt(s.surcharge)}</td>
       <td class="amount amount-negative">${fmt(s.proc)}</td>
       <td class="amount amount-positive" style="font-size:15px;font-weight:700">+${fmt(s.base+s.surcharge-s.proc)}</td>
-    </tr>`).join('');
+    </tr>`; }).join('');
   switchParseTab('raw');
 }
 
@@ -1869,22 +1874,30 @@ async function saveSettlement() {
     status:     findCol(keys,'배달상태'),
     processFee: findCol(keys,'배달처리비'),
   };
+  // 기사ID 기준으로 묶기 (ID가 없으면 이름으로)
+  const rowKey = r => {
+    const id = String(r[C.riderId]||'').trim();
+    return id ? 'id:'+id : 'nm:'+(r[C.riderName]||'알 수 없음');
+  };
   const summary = {};
   parsedRows.forEach(r => {
-    const name = r[C.riderName]||'알 수 없음';
-    if (!summary[name]) {
-      const dates = parsedRows.filter(x=>x[C.riderName]===name).map(x=>x[C.date]).filter(Boolean).sort();
-      summary[name] = { driver:name, riderId:r[C.riderId]||'', start:dates[0]||'', end:dates[dates.length-1]||'', totalCount:0, doneCount:0, proc:0 };
+    const key = rowKey(r);
+    if (!summary[key]) {
+      const dates = parsedRows.filter(x=>rowKey(x)===key).map(x=>x[C.date]).filter(Boolean).sort();
+      summary[key] = { driver:r[C.riderName]||'알 수 없음', riderId:String(r[C.riderId]||'').trim(), start:dates[0]||'', end:dates[dates.length-1]||'', totalCount:0, doneCount:0, proc:0 };
     }
     const procAmt = parseNum(r[C.processFee]);
-    summary[name].totalCount++;
-    if (String(r[C.status]||'').includes('완료') || procAmt > 0) summary[name].doneCount++;
-    summary[name].proc += procAmt;
+    summary[key].totalCount++;
+    if (String(r[C.status]||'').includes('완료') || procAmt > 0) summary[key].doneCount++;
+    summary[key].proc += procAmt;
   });
 
   setLoading(true);
   const inserts = Object.values(summary).map(s => {
-    const d = drivers.find(x => x.name === s.driver);
+    // 기사ID로 먼저 찾고, ID가 없을 때만 이름으로 찾기
+    const d = s.riderId
+      ? drivers.find(x => String(x.driverid||'').trim() === s.riderId)
+      : drivers.find(x => x.name === s.driver);
     const callfeeUnit  = d ? (Number(d.callfee)||0) : 0;
     const prepayUnit   = d ? (Number(d.prepay)||0)  : 0;
     const callfeeTotal = Math.round(callfeeUnit * s.doneCount);
