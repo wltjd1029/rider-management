@@ -591,6 +591,10 @@
             <option value="daily">일정산</option>
             <option value="weekly">주정산</option>
           </select>
+          <select class="filter-select" id="settle-reg-filter" onchange="filterSettlements()">
+            <option value="">등록 여부 전체</option>
+            <option value="unreg">미등록 기사만</option>
+          </select>
         </div>
       </div>
 
@@ -617,6 +621,11 @@
               <span class="result-tag">✓ 파싱 완료</span>
               <button class="btn btn-primary btn-sm" onclick="saveSettlement()">저장</button>
             </div>
+          </div>
+          <!-- 미등록 기사 경고 -->
+          <div id="parse-unreg-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 14px;border:1px solid var(--amber);border-radius:10px;background:rgba(245,158,11,0.10)">
+            <div style="font-size:13px;line-height:1.5">⚠️ <span id="parse-unreg-text"></span></div>
+            <button class="btn btn-ghost btn-sm" id="parse-unreg-btn" onclick="toggleParseUnreg()">미등록 기사만 보기</button>
           </div>
           <!-- 원본 탭 / 집계 탭 -->
           <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0">
@@ -1230,7 +1239,7 @@ function renderSettlements(list) {
     const deductTip = [d1txt,d2txt].filter(Boolean).join(' / ') || '-';
     return `<tr>
       <td style="text-align:center"><input type="checkbox" class="settle-chk" value="${s.id}" onchange="updateSettleActions()" style="cursor:pointer;accent-color:var(--accent)"></td>
-      <td><div class="driver-cell"><div class="d-avatar">${(s.driver_name||'?')[0]}</div>${s.driver_name||'-'}</div></td>
+      <td><div class="driver-cell"><div class="d-avatar">${(s.driver_name||'?')[0]}</div>${s.driver_name||'-'}${s.driver_id?'':' <span class="badge badge-amber" style="margin-left:6px" title="기사관리에 등록되지 않은 기사예요. 수수료·세금이 적용되지 않았어요.">미등록</span>'}</div></td>
       <td style="color:var(--text3);font-size:12px;font-family:monospace">${s.driver_code||'-'}</td>
       <td style="color:var(--text3);font-size:12px;white-space:nowrap">${s.period_start||''}${s.settle_type==='weekly'?' ~ '+(s.period_end||''):''}</td>
       <td>${s.settle_type==='daily'?'<span class="badge badge-blue">일정산</span>':'<span class="badge badge-purple">주정산</span>'}</td>
@@ -1429,6 +1438,8 @@ function getSortedSettlements(list) {
 function filterSettlements() {
   const t = document.getElementById('settle-type-filter').value;
   let list = t ? settlements.filter(s => s.settle_type === t) : settlements;
+  const regEl = document.getElementById('settle-reg-filter');
+  if (regEl && regEl.value === 'unreg') list = list.filter(s => !s.driver_id);
   list = getSortedSettlements(list);
   renderSettlements(list);
 }
@@ -1771,6 +1782,38 @@ function findCol(keys, ...kws) {
   return keys.find(k => kws.some(w => k.trim().replace(/\s/g,'').includes(w.replace(/\s/g,'')))) || '';
 }
 
+// 정산파일의 라이더 → 기사관리 기사 찾기 (라이더ID 우선, ID가 없으면 이름)
+function findDriverForRider(riderId, name) {
+  const rid = String(riderId||'').trim();
+  return rid
+    ? drivers.find(x => String(x.driverid||'').trim() === rid)
+    : drivers.find(x => x.name === name);
+}
+
+let parseSummaryData = [];
+let parseUnregOnly = false;
+
+function renderParseSummary() {
+  const list = parseUnregOnly ? parseSummaryData.filter(s => !s.registered) : parseSummaryData;
+  document.getElementById('parse-summary-tbody').innerHTML = list.map(s => `<tr${s.registered?'':' style="background:rgba(245,158,11,0.08)"'}>
+      <td><div class="driver-cell"><div class="d-avatar">${(s.name||'?')[0]}</div>${s.name}${s.registered?'':' <span class="badge badge-amber" style="margin-left:6px">미등록</span>'}</div></td>
+      <td style="color:var(--text3);font-size:12px">${s.id}</td>
+      <td style="text-align:center"><span class="badge badge-blue">${s.count}건</span></td>
+      <td class="amount">${fmt(s.base)}</td>
+      <td class="amount amount-positive">+${fmt(s.surcharge)}</td>
+      <td class="amount amount-negative">${fmt(s.proc)}</td>
+      <td class="amount amount-positive" style="font-size:15px;font-weight:700">+${fmt(s.base+s.surcharge-s.proc)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">표시할 라이더가 없습니다</td></tr>';
+  const btn = document.getElementById('parse-unreg-btn');
+  if (btn) btn.textContent = parseUnregOnly ? '전체 보기' : '미등록 기사만 보기';
+}
+
+function toggleParseUnreg() {
+  parseUnregOnly = !parseUnregOnly;
+  switchParseTab('summary');
+  renderParseSummary();
+}
+
 function showParsed(filename, rows) {
   parsedFile = filename;
   parsedRows = rows;
@@ -1843,16 +1886,23 @@ function showParsed(filename, rows) {
     summary[key].surcharge += parseNum(r[C.weather])+parseNum(r[C.extra])+parseNum(r[C.peak])+parseNum(r[C.region])+parseNum(r[C.region2])+parseNum(r[C.bulk]);
     summary[key].proc      += proc;
   });
-  document.getElementById('parse-summary-tbody').innerHTML = Object.values(summary).map(s => { const name = s.name; return
-    `<tr>
-      <td><div class="driver-cell"><div class="d-avatar">${name[0]}</div>${name}</div></td>
-      <td style="color:var(--text3);font-size:12px">${s.id}</td>
-      <td style="text-align:center"><span class="badge badge-blue">${s.count}건</span></td>
-      <td class="amount">${fmt(s.base)}</td>
-      <td class="amount amount-positive">+${fmt(s.surcharge)}</td>
-      <td class="amount amount-negative">${fmt(s.proc)}</td>
-      <td class="amount amount-positive" style="font-size:15px;font-weight:700">+${fmt(s.base+s.surcharge-s.proc)}</td>
-    </tr>`; }).join('');
+  parseSummaryData = Object.values(summary).map(s => ({
+    ...s, registered: !!findDriverForRider(s.id==='-'?'':s.id, s.name)
+  }));
+  parseUnregOnly = false;
+  renderParseSummary();
+
+  // 미등록 기사 경고 배너
+  const unreg = parseSummaryData.filter(s => !s.registered);
+  const banner = document.getElementById('parse-unreg-banner');
+  if (unreg.length) {
+    const names = unreg.slice(0,5).map(s => `${s.name}${s.id!=='-'?'('+s.id+')':''}`).join(', ');
+    document.getElementById('parse-unreg-text').innerHTML =
+      `<b>기사관리에 없는 기사 ${unreg.length}명</b>이 있어요. 이 기사들은 수수료·세금·기타차감이 0원으로 계산돼요.<br><span style="color:var(--text3);font-size:12px">${names}${unreg.length>5?' 외 '+(unreg.length-5)+'명':''}</span>`;
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
   switchParseTab('raw');
 }
 
@@ -1873,6 +1923,7 @@ async function saveSettlement() {
     date:       findCol(keys,'운행일','날짜','정산일'),
     status:     findCol(keys,'배달상태'),
     processFee: findCol(keys,'배달처리비'),
+    userId:     findCol(keys,'UserID','userid'),
   };
   // 기사ID 기준으로 묶기 (ID가 없으면 이름으로)
   const rowKey = r => {
@@ -1884,7 +1935,7 @@ async function saveSettlement() {
     const key = rowKey(r);
     if (!summary[key]) {
       const dates = parsedRows.filter(x=>rowKey(x)===key).map(x=>x[C.date]).filter(Boolean).sort();
-      summary[key] = { driver:r[C.riderName]||'알 수 없음', riderId:String(r[C.riderId]||'').trim(), start:dates[0]||'', end:dates[dates.length-1]||'', totalCount:0, doneCount:0, proc:0 };
+      summary[key] = { driver:r[C.riderName]||'알 수 없음', riderId:String(r[C.riderId]||'').trim(), userId:String(r[C.userId]||'').trim(), start:dates[0]||'', end:dates[dates.length-1]||'', totalCount:0, doneCount:0, proc:0 };
     }
     const procAmt = parseNum(r[C.processFee]);
     summary[key].totalCount++;
@@ -1892,12 +1943,13 @@ async function saveSettlement() {
     summary[key].proc += procAmt;
   });
 
+  const unregCount = Object.values(summary).filter(s => !findDriverForRider(s.riderId, s.driver)).length;
+  if (unregCount > 0 && !confirm(`기사관리에 없는 기사 ${unregCount}명이 포함돼 있어요.\n이 기사들은 수수료·세금 차감 없이 저장돼요.\n그대로 저장할까요?`)) return;
+
   setLoading(true);
   const inserts = Object.values(summary).map(s => {
     // 기사ID로 먼저 찾고, ID가 없을 때만 이름으로 찾기
-    const d = s.riderId
-      ? drivers.find(x => String(x.driverid||'').trim() === s.riderId)
-      : drivers.find(x => x.name === s.driver);
+    const d = findDriverForRider(s.riderId, s.driver);
     const callfeeUnit  = d ? (Number(d.callfee)||0) : 0;
     const prepayUnit   = d ? (Number(d.prepay)||0)  : 0;
     const callfeeTotal = Math.round(callfeeUnit * s.doneCount);
@@ -1914,7 +1966,7 @@ async function saveSettlement() {
     return {
       driver_id:    d ? d.id : null,
       driver_name:  s.driver,
-      driver_code:  d ? (d.driverid||'') : s.riderId,
+      driver_code:  s.userId || (d ? (d.driverid||'') : s.riderId),
       period_start: s.start || null,
       period_end:   s.end   || null,
       settle_type:  s.start !== s.end ? 'weekly' : 'daily',
@@ -1979,10 +2031,11 @@ function exportSettlementsExcel(mode) {
   const rows = list.map(s => {
     const otherDeduct = (s.deduct1||0) + (s.deduct2||0);
     // 기사 계좌 정보 조회
-    const d = drivers.find(x => x.name === s.driver_name || x.driverid === s.driver_code);
+    const d = s.driver_id ? drivers.find(x => x.id === s.driver_id) : null;
     return {
       '기사명':           s.driver_name || '',
       '기사ID':           s.driver_code || '',
+      '등록여부':         s.driver_id ? '등록' : '미등록',
       '예금주':           d?.account_name || '',
       '은행':             d?.bank || '',
       '계좌번호':         d?.account_number || '',
@@ -2340,7 +2393,7 @@ function renderSettleCards(list) {
         <div class="driver-cell">
           <div class="d-avatar">${(s.driver_name||'?')[0]}</div>
           <div>
-            <div style="font-weight:600;font-size:15px">${s.driver_name||'-'}</div>
+            <div style="font-weight:600;font-size:15px">${s.driver_name||'-'}${s.driver_id?'':' <span class="badge badge-amber" style="margin-left:4px">미등록</span>'}</div>
             <div style="font-size:11px;color:var(--text3)">${s.driver_code||''}</div>
           </div>
         </div>
