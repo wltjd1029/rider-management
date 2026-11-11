@@ -650,6 +650,10 @@
               <button class="btn btn-primary btn-sm" onclick="saveSettlement()">저장</button>
             </div>
           </div>
+          <!-- 주정산 기사 제외 안내 -->
+          <div id="parse-weekly-banner" style="display:none;align-items:center;gap:12px;margin:0 0 12px;padding:12px 14px;border:1px solid var(--border2);border-radius:10px;background:rgba(139,92,246,0.10)">
+            <div style="font-size:13px;line-height:1.5">ℹ️ <span id="parse-weekly-text"></span></div>
+          </div>
           <!-- 미등록 기사 경고 -->
           <div id="parse-unreg-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 14px;border:1px solid var(--amber);border-radius:10px;background:rgba(245,158,11,0.10)">
             <div style="font-size:13px;line-height:1.5">⚠️ <span id="parse-unreg-text"></span></div>
@@ -2022,8 +2026,8 @@ let parseUnregOnly = false;
 
 function renderParseSummary() {
   const list = parseUnregOnly ? parseSummaryData.filter(s => !s.registered) : parseSummaryData;
-  document.getElementById('parse-summary-tbody').innerHTML = list.map(s => `<tr${s.registered?'':' style="background:rgba(245,158,11,0.08)"'}>
-      <td><div class="driver-cell"><div class="d-avatar">${(s.name||'?')[0]}</div>${s.name}${s.registered?'':' <span class="badge badge-amber" style="margin-left:6px">미등록</span>'}</div></td>
+  document.getElementById('parse-summary-tbody').innerHTML = list.map(s => `<tr style="${s.weekly?'opacity:0.5':(s.registered?'':'background:rgba(245,158,11,0.08)')}">
+      <td><div class="driver-cell"><div class="d-avatar">${(s.name||'?')[0]}</div>${s.name}${s.registered?'':' <span class="badge badge-amber" style="margin-left:6px">미등록</span>'}${s.weekly?' <span class="badge badge-purple" style="margin-left:6px" title="기사관리에서 주정산으로 등록된 기사라 일정산에는 저장되지 않아요">주정산 (제외)</span>':''}</div></td>
       <td style="color:var(--text3);font-size:12px">${s.userId||s.id}</td>
       <td style="text-align:center"><span class="badge badge-blue">${s.count}건</span></td>
       <td class="amount">${fmt(s.base)}</td>
@@ -2117,10 +2121,24 @@ function showParsed(filename, rows) {
     summary[key].proc      += proc;
   });
   parseSummaryData = Object.values(summary).map(s => ({
-    ...s, registered: !!findDriverForRider(s.id==='-'?'':s.id, s.name, s.userId)
+    ...s,
+    registered: !!findDriverForRider(s.id==='-'?'':s.id, s.name, s.userId),
+    weekly: (() => { const d = findDriverForRider(s.id==='-'?'':s.id, s.name, s.userId); return !!d && d.settle_type === 'weekly'; })()
   }));
   parseUnregOnly = false;
   renderParseSummary();
+
+  // 주정산 기사 제외 안내 배너
+  const weeklyList = parseSummaryData.filter(s => s.weekly);
+  const wBanner = document.getElementById('parse-weekly-banner');
+  if (weeklyList.length) {
+    const wn = weeklyList.slice(0,5).map(s => s.name).join(', ');
+    document.getElementById('parse-weekly-text').innerHTML =
+      `<b>주정산 기사 ${weeklyList.length}명</b>은 일정산에 저장되지 않아요.<br><span style="color:var(--text3);font-size:12px">${wn}${weeklyList.length>5?' 외 '+(weeklyList.length-5)+'명':''}</span>`;
+    wBanner.style.display = 'flex';
+  } else {
+    wBanner.style.display = 'none';
+  }
 
   // 미등록 기사 경고 배너
   const unreg = parseSummaryData.filter(s => !s.registered);
@@ -2174,11 +2192,18 @@ async function saveSettlement() {
     summary[key].proc += procAmt;
   });
 
-  const unregCount = Object.values(summary).filter(s => !findDriverForRider(s.riderId, s.driver, s.userId)).length;
+  // 기사관리에서 주정산으로 등록된 기사는 일정산 저장에서 제외
+  const allGroups = Object.values(summary);
+  const isWeeklyDriver = s => { const d = findDriverForRider(s.riderId, s.driver, s.userId); return !!d && d.settle_type === 'weekly'; };
+  const skippedWeekly = allGroups.filter(isWeeklyDriver).length;
+  const targets = allGroups.filter(s => !isWeeklyDriver(s));
+  if (!targets.length) { showToast('⚠️ 저장할 일정산 기사가 없어요 (모두 주정산 기사예요)'); return; }
+
+  const unregCount = targets.filter(s => !findDriverForRider(s.riderId, s.driver, s.userId)).length;
   if (unregCount > 0 && !confirm(`기사관리에 없는 기사 ${unregCount}명이 포함돼 있어요.\n이 기사들은 수수료·세금 차감 없이 저장돼요.\n그대로 저장할까요?`)) return;
 
   setLoading(true);
-  const inserts = Object.values(summary).map(s => {
+  const inserts = targets.map(s => {
     // 기사ID로 먼저 찾고, ID가 없을 때만 이름으로 찾기
     const d = findDriverForRider(s.riderId, s.driver, s.userId);
     const callfeeUnit  = d ? (Number(d.callfee)||0) : 0;
@@ -2221,7 +2246,7 @@ async function saveSettlement() {
   document.getElementById('parse-result').style.display = 'none';
   document.getElementById('file-input').value = '';
   parsedRows = [];
-  showToast(`✅ ${inserts.length}명의 정산이 저장되었습니다`);
+  showToast(`✅ ${inserts.length}명의 정산이 저장되었습니다` + (skippedWeekly ? ` (주정산 기사 ${skippedWeekly}명 제외)` : ''));
   await loadAll();
 }
 
